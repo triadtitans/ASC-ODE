@@ -3,7 +3,8 @@
 
 using namespace ASC_ode;
 
-class RHS : public NonlinearFunction
+
+class MassSpring : public NonlinearFunction
 {
   size_t DimX() const override { return 2; }
   size_t DimF() const override { return 2; }
@@ -13,6 +14,7 @@ class RHS : public NonlinearFunction
     f(0) = x(1);
     f(1) = -x(0);
   }
+  
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
   {
     df = 0.0;
@@ -24,11 +26,11 @@ class RHS : public NonlinearFunction
 
 int main()
 {
-  double tend = 1;
-  double dt = 0.01;
-  Vector<> x { 1, 0 };
-  auto rhs = make_shared<RHS>();
+  double tend = 4*M_PI;
+  int steps = 100;
+  Vector<> y { 1, 0 };
+  auto rhs = make_shared<MassSpring>();
   
-  SolveODE_IE(tend, dt, x, rhs,
-              [](double t, VectorView<double> x) { cout << "t = " << t << ", x = " << x << endl; });
+  SolveODE_IE(tend, steps, y, rhs,
+              [](double t, VectorView<double> y) { cout << t << "  " << y(0) << " " << y(1) << endl; });
 }

@@ -13,20 +13,20 @@ int main()
   
   cout << "mss: " << endl << mss << endl;
 
-  auto mss_func = make_shared<MSS_Function<2>> (mss);
-
-
 
   double tend = 10;
-  double dt = tend/1000;
+  double steps = 1000;
   
   Vector<> x(2*mss.Masses().size());
   Vector<> dx(2*mss.Masses().size());  
   Vector<> ddx(2*mss.Masses().size());  
 
+  auto mss_func = make_shared<MSS_Function<2>> (mss);
+  auto mass = make_shared<IdenticFunction> (x.Size());      
+
   mss.GetState (x, dx, ddx);
   
-  SolveODE_Verlet(tend, dt, x, dx,  mss_func,
-                  [](double t, VectorView<double> x) { cout << "t = " << t
-                                                            << ", x = " << Vec<4>(x) << endl; });
+  SolveODE_Newmark(tend, steps, x, dx,  mss_func, mass,
+                   [](double t, VectorView<double> x) { cout << "t = " << t
+                                                             << ", x = " << Vec<4>(x) << endl; });
 }

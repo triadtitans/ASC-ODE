@@ -1,10 +1,5 @@
 add_executable (test_mass_spring mass_spring.cc)
-
-# include_directories(../src)
-# target_sources (mass_spring PUBLIC ../src/ode.h ../src/nonlinfunc.h)
-
 target_link_libraries (test_mass_spring PUBLIC ngbla)
-
 
 
 

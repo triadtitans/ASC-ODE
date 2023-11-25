@@ -1,3 +1,3 @@
 
-install (FILES nonlinfunc.h ode.h DESTINATION include) 
+install (FILES nonlinfunc.h Newton.h ode.h DESTINATION include) 
 

@@ -1,0 +1,3 @@
+[submodule "BLA"]
+	path = BLA
+	url = git@github.com:triadtitans/bla.git

@@ -29,7 +29,7 @@ int main()
   double tend = 4*M_PI;
   int steps = 100;
   Vector<> y { 1, 0 };
-  auto rhs = make_shared<MassSpring>();
+  auto rhs = std::make_shared<MassSpring>();
   
   SolveODE_IE(tend, steps, y, rhs,
               [](double t, VectorView<double> y) { cout << t << "  " << y(0) << " " << y(1) << endl; });

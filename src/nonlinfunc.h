@@ -1,13 +1,13 @@
 #ifndef NONLINFUNC_H
 #define NONLINFUNC_H
 
-#include <vector.hpp>
-#include <matrix.hpp>
+#include <vector.h>
+#include <matrix.h>
 
 
 namespace ASC_ode
 {
-  using namespace ngbla;
+  using namespace ASC_bla;
 
   class NonlinearFunction
   {
@@ -64,11 +64,11 @@ namespace ASC_ode
   
   class SumFunction : public NonlinearFunction
   {
-    shared_ptr<NonlinearFunction> fa, fb;
+    std::shared_ptr<NonlinearFunction> fa, fb;
     double faca, facb;
   public:
-    SumFunction (shared_ptr<NonlinearFunction> _fa,
-                 shared_ptr<NonlinearFunction> _fb,
+    SumFunction (std::shared_ptr<NonlinearFunction> _fa,
+                 std::shared_ptr<NonlinearFunction> _fb,
                  double _faca, double _facb)
       : fa(_fa), fb(_fb), faca(_faca), facb(_facb) { } 
     
@@ -93,23 +93,23 @@ namespace ASC_ode
   };
 
 
-  inline auto operator- (shared_ptr<NonlinearFunction> fa, shared_ptr<NonlinearFunction> fb)
+  inline auto operator- (std::shared_ptr<NonlinearFunction> fa, shared_ptr<NonlinearFunction> fb)
   {
-    return make_shared<SumFunction>(fa, fb, 1, -1);
+    return std::make_shared<SumFunction>(fa, fb, 1, -1);
   }
 
-  inline auto operator+ (shared_ptr<NonlinearFunction> fa, shared_ptr<NonlinearFunction> fb)
+  inline auto operator+ (std::shared_ptr<NonlinearFunction> fa, shared_ptr<NonlinearFunction> fb)
   {
-    return make_shared<SumFunction>(fa, fb, 1, 1);
+    return std::make_shared<SumFunction>(fa, fb, 1, 1);
   }
 
   
   class ScaleFunction : public NonlinearFunction
   {
-    shared_ptr<NonlinearFunction> fa;
+    std::shared_ptr<NonlinearFunction> fa;
     double fac;
   public:
-    ScaleFunction (shared_ptr<NonlinearFunction> _fa,
+    ScaleFunction (std::shared_ptr<NonlinearFunction> _fa,
                    double _fac)
       : fa(_fa), fac(_fac) { } 
     
@@ -139,10 +139,10 @@ namespace ASC_ode
   // fa(fb)
   class ComposeFunction : public NonlinearFunction
   {
-    shared_ptr<NonlinearFunction> fa, fb;
+    std::shared_ptr<NonlinearFunction> fa, fb;
   public:
-    ComposeFunction (shared_ptr<NonlinearFunction> _fa,
-                     shared_ptr<NonlinearFunction> _fb)
+    ComposeFunction (std::shared_ptr<NonlinearFunction> _fa,
+                     std::shared_ptr<NonlinearFunction> _fb)
       : fa(_fa), fb(_fb) { } 
     
     size_t DimX() const override { return fb->DimX(); }
@@ -171,12 +171,12 @@ namespace ASC_ode
   
   inline auto Compose (shared_ptr<NonlinearFunction> fa, shared_ptr<NonlinearFunction> fb)
   {
-    return make_shared<ComposeFunction> (fa, fb);
+    return std::make_shared<ComposeFunction> (fa, fb);
   }
   
   class EmbedFunction : public NonlinearFunction
   {
-    shared_ptr<NonlinearFunction> fa;
+    std::shared_ptr<NonlinearFunction> fa;
     size_t firstx, dimx, firstf, dimf;
     size_t nextx, nextf;
   public:

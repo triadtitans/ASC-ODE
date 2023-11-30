@@ -93,12 +93,12 @@ namespace ASC_ode
   };
 
 
-  inline auto operator- (std::shared_ptr<NonlinearFunction> fa, shared_ptr<NonlinearFunction> fb)
+  inline auto operator- (std::shared_ptr<NonlinearFunction> fa, std::shared_ptr<NonlinearFunction> fb)
   {
     return std::make_shared<SumFunction>(fa, fb, 1, -1);
   }
 
-  inline auto operator+ (std::shared_ptr<NonlinearFunction> fa, shared_ptr<NonlinearFunction> fb)
+  inline auto operator+ (std::shared_ptr<NonlinearFunction> fa, std::shared_ptr<NonlinearFunction> fb)
   {
     return std::make_shared<SumFunction>(fa, fb, 1, 1);
   }
@@ -128,9 +128,9 @@ namespace ASC_ode
     }
   };
 
-  inline auto operator* (double a, shared_ptr<NonlinearFunction> f)
+  inline auto operator* (double a, std::shared_ptr<NonlinearFunction> f)
   {
-    return make_shared<ScaleFunction>(f, a);
+    return std::make_shared<ScaleFunction>(f, a);
   }
 
 
@@ -169,7 +169,7 @@ namespace ASC_ode
   };
   
   
-  inline auto Compose (shared_ptr<NonlinearFunction> fa, shared_ptr<NonlinearFunction> fb)
+  inline auto Compose (std::shared_ptr<NonlinearFunction> fa, std::shared_ptr<NonlinearFunction> fb)
   {
     return std::make_shared<ComposeFunction> (fa, fb);
   }
@@ -180,7 +180,7 @@ namespace ASC_ode
     size_t firstx, dimx, firstf, dimf;
     size_t nextx, nextf;
   public:
-    EmbedFunction (shared_ptr<NonlinearFunction> _fa,
+    EmbedFunction (std::shared_ptr<NonlinearFunction> _fa,
                    size_t _firstx, size_t _dimx,
                    size_t _firstf, size_t _dimf)
       : fa(_fa),

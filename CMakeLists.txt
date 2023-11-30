@@ -5,13 +5,16 @@ set (CMAKE_CXX_STANDARD 17)
 
 
 # use linalg from NGSolve, otherwise comment it out
-find_package(NGSolve CONFIG REQUIRED
-  HINTS /usr $ENV{NETGENDIR}/.. /tmp/inst/usr /opt/netgen/ /Applications/Netgen.app/Contents/Resources/CMake C:/netgen
-)
+#find_package(NGSolve CONFIG REQUIRED
+#  HINTS /usr $ENV{NETGENDIR}/.. /tmp/inst/usr /opt/netgen/ /Applications/Netgen.app/Contents/Resources/CMake C:/netgen
+#)
 
 
 include_directories(src)
 add_subdirectory (src)
+
+#include_directories(BLA/src)
+#include_directories(BLA/HPC/src)
 
 add_executable (test_ode demos/test_ode.cc)
 target_link_libraries (test_ode PUBLIC ngbla)

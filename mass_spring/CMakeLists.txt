@@ -2,7 +2,9 @@ add_executable (test_mass_spring mass_spring.cc)
 target_link_libraries (test_mass_spring PUBLIC ngbla)
 
 
-
+IF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm") 
+set (pybind11_DIR ../venv/lib/python3.9/site-packages/pybind11/share/cmake/pybind11)
+ENDIF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
 
 
 find_package(Python 3.8 COMPONENTS Interpreter Development REQUIRED)

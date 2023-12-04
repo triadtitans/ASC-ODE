@@ -16,12 +16,12 @@ namespace ASC_ode
     for (int i = 0; i < maxsteps; i++)
       {
         func->Evaluate(x, res);
-        // cout << "|res| = " << L2Norm(res) << endl;
+        std::cout << "|res| = " << Norm(res) << std::endl;
         func->EvaluateDeriv(x, fprime);
-        CalcInverse(fprime);
+        fprime = inverse(fprime);
         x -= fprime*res;
 
-        double err= L2Norm(res);
+        double err= Norm(res);
         if (callback)
           callback(i, err, x);
         if (err < tol) return;

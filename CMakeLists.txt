@@ -14,16 +14,17 @@ include_directories(src)
 add_subdirectory (src)
 
 include_directories(BLA/src)
+
 include_directories(BLA/HPC/src)
 
 add_executable (test_ode demos/test_ode.cc)
-target_link_libraries (test_ode PUBLIC ngbla)
+target_link_libraries (test_ode PUBLIC)
 
 add_executable (test_newmark demos/test_newmark.cc)
-target_link_libraries (test_newmark PUBLIC ngbla)
+target_link_libraries (test_newmark PUBLIC)
 
 add_executable (test_alpha demos/test_alpha.cc)
-target_link_libraries (test_alpha PUBLIC ngbla)
+target_link_libraries (test_alpha PUBLIC)
 
 
 #add_subdirectory (mass_spring)

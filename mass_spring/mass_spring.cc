@@ -21,8 +21,8 @@ int main()
   Vector<> dx(2*mss.Masses().size());  
   Vector<> ddx(2*mss.Masses().size());  
 
-  auto mss_func = make_shared<MSS_Function<2>> (mss);
-  auto mass = make_shared<IdentityFunction> (x.Size());      
+  auto mss_func = std::make_shared<MSS_Function<2>> (mss);
+  auto mass = std::make_shared<IdentityFunction> (x.Size());      
 
   mss.GetState (x, dx, ddx);
   

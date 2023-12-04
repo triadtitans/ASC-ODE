@@ -40,14 +40,15 @@ int main()
 {
   double tend = 50*2*M_PI;
   double steps = 1000;
-  Vector<double> x { 1, 0, 0, };
-  Vector<double> dx { 0, 0, 0 };
-  Vector<double> ddx { 0, 0, 0 };
-  auto rhs = make_shared<dLagrange>();
-  auto mass = make_shared<Projector>(3, 0, 2);
+  Vector<double> x { 3 };
+  x(0)=1;
+  Vector<double> dx { 3 };
+  Vector<double> ddx { 3 };
+  auto rhs = std::make_shared<dLagrange>();
+  auto mass = std::make_shared<Projector>(3, 0, 2);
   
   SolveODE_Alpha (tend, steps, 0.8, x, dx, ddx, rhs, mass, 
                    // [](double t, VectorView<double> x) { cout << "t = " << t << ", x = " << x(0) << " " << x(1) << " " << x(2) << endl; }
-                   [](double t, VectorView<double> x) { cout << t << " " << x(0) << " " << x(1) << " " << x(2) << endl; }                   
+                   [](double t, VectorView<double> x) { std::cout << t << " " << x(0) << " " << x(1) << " " << x(2) << std::endl; }                   
                    );
 }

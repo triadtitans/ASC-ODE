@@ -18,8 +18,11 @@ namespace ASC_ode
         func->Evaluate(x, res);
         std::cout << "|res| = " << Norm(res) << std::endl;
         func->EvaluateDeriv(x, fprime);
+        std::cout << "fprime = " << fprime << std::endl;
         fprime = inverse(fprime);
+        std::cout << "inv fprime = " << fprime << std::endl;
         x -= fprime*res;
+        std::cout << "new x = " << x << std::endl;
 
         double err= Norm(res);
         if (callback)

@@ -1,6 +1,6 @@
 #include <nonlinfunc.h>
 #include <ode.h>
-
+#include <math.h>
 using namespace ASC_ode;
 
 

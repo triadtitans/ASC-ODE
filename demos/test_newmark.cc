@@ -15,7 +15,8 @@ class RHS : public NonlinearFunction
   }
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
   {
-    //df(0) = -1;
+    // TODO what is this?
+    // df(0) = -1;
   }
 };
 

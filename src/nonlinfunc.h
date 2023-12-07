@@ -19,7 +19,6 @@ namespace ASC_ode
     virtual void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const = 0;
   };
 
-
   class IdentityFunction : public NonlinearFunction
   {
     size_t n;
@@ -38,8 +37,6 @@ namespace ASC_ode
       df.Diag() = 1.0;
     }
   };
-
-
 
   class ConstantFunction : public NonlinearFunction
   {
@@ -60,8 +57,6 @@ namespace ASC_ode
     }
   };
 
-  
-  
   class SumFunction : public NonlinearFunction
   {
     std::shared_ptr<NonlinearFunction> fa, fb;
@@ -92,7 +87,6 @@ namespace ASC_ode
     }
   };
 
-
   inline auto operator- (std::shared_ptr<NonlinearFunction> fa, std::shared_ptr<NonlinearFunction> fb)
   {
     return std::make_shared<SumFunction>(fa, fb, 1, -1);
@@ -103,7 +97,6 @@ namespace ASC_ode
     return std::make_shared<SumFunction>(fa, fb, 1, 1);
   }
 
-  
   class ScaleFunction : public NonlinearFunction
   {
     std::shared_ptr<NonlinearFunction> fa;
@@ -132,9 +125,6 @@ namespace ASC_ode
   {
     return std::make_shared<ScaleFunction>(f, a);
   }
-
-
-
 
   // fa(fb)
   class ComposeFunction : public NonlinearFunction
@@ -226,7 +216,34 @@ namespace ASC_ode
     }
   };
 
-  
+  class BlockFunction : public NonlinearFunction
+  {
+    std::shared_ptr<NonlinearFunction> func;
+    size_t s;
+  public:
+    BlockFunction (size_t s, size_t n) : s(s) { }
+
+    size_t DimX() const override { return s*func->DimX(); }
+    size_t DimF() const override { return s*func->DimF(); }
+
+    void Evaluate (VectorView<double> x, VectorView<double> f) const override
+    {
+      size_t fdim = func->DimF();
+      size_t xdim = func->DimX();
+      for (size_t i = 0; i<s; i++) {
+        func->Evaluate(x.Range(i*xdim, xdim), f.Range(i*fdim, fdim));
+      }
+    }
+    void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
+    {
+      df = 0.0;
+      size_t fdim = func->DimF();
+      size_t xdim = func->DimX();
+      for (size_t i = 0; i<s; i++) {
+        func->EvaluateDeriv(x.Range(i*xdim,xdim), df.Rows(i*fdim,fdim).Cols(i*xdim, xdim));
+      }
+    }
+  };
 }
 
 #endif

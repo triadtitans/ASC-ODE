@@ -45,6 +45,7 @@ class ElectricNetwork : public NonlinearFunction
     df(0,1) = -(100*M_PI)*sin(100*M_PI*x(1)) * 1/RC;
   }
 };
+
 std::string formatVec(std::vector<double> v) { 
   std::string outstring = "";
   for( size_t i = 0; i < v.size(); ++i ) {
@@ -67,8 +68,8 @@ int main()
   std::vector<double> time;
   std::vector<double> f1;
   
-  SolveODE_IE(tend, steps, y, rhs,
-              [](double t, VectorView<double> y) { std::cout << t << "  " << y(0) << " " << y(1) << std::endl; });
+  SolveODE_CN(tend, steps, y, rhs,
+              [&time,&f1](double t, VectorView<double> y) { std::cout << t << "  " << y(0) << " " << y(1) << std::endl; time.push_back(t); f1.push_back(y(0)); });
 
   // std::ofstream file;
   // file.open("./data.txt", std::ios::trunc);

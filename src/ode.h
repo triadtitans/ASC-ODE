@@ -46,6 +46,9 @@ namespace ASC_ode
       {
         NewtonSolver (equ, y);
         yold->Set(y);
+        rhs->Evaluate(y,fold);
+        rhsold->Set(fold);
+        
         t += dt;
         if (callback) callback(t, y);
       }

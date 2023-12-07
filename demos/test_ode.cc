@@ -58,7 +58,7 @@ std::string formatVec(std::vector<double> v) {
 int main()
 {
   double tend = 0.3;
-  int steps = 2000;
+  int steps = 200;
   Vector<double> y {2};
   y(0)=0;
   y(1)=0;
@@ -70,11 +70,11 @@ int main()
   SolveODE_IE(tend, steps, y, rhs,
               [](double t, VectorView<double> y) { std::cout << t << "  " << y(0) << " " << y(1) << std::endl; });
 
-  std::ofstream file;
-  file.open("./data.txt", std::ios::trunc);
+  // std::ofstream file;
+  // file.open("./data.txt", std::ios::trunc);
 
-  file << "time := {" << formatVec(time) << "}" << std::endl;
-  file << "function1 := {" << formatVec(f1) << "}" << std::endl;
-  file << "points := Transpose[{time, function1}]\n" << "ListPlot[points, Joined -> True, PlotMarkers -> None, PlotStyle -> Blue]";
-  file.close();
+  // file << "time := {" << formatVec(time) << "}" << std::endl;
+  // file << "function1 := {" << formatVec(f1) << "}" << std::endl;
+  // file << "points := Transpose[{time, function1}]\n" << "ListPlot[points, Joined -> True, PlotMarkers -> None, PlotStyle -> Blue]";
+  // file.close();
 }

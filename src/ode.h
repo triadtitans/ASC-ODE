@@ -29,6 +29,23 @@ namespace ASC_ode
         if (callback) callback(t, y);
       }
   }
+
+  void SolveODE_EE(double tend, int steps,
+                   VectorView<double> y, std::shared_ptr<NonlinearFunction> rhs,
+                   std::function<void(double,VectorView<double>)> callback = nullptr)
+  {
+    double dt = tend/steps;
+    Vector<double> dy(rhs->DimF());
+    double t = 0;
+    for (int i = 0; i < steps; i++)
+      {
+        rhs->Evaluate(y,dy);
+        y += dt*dy;
+        t += dt;
+        if (callback) callback(t, y);
+      }
+  }
+
  void SolveODE_CN(double tend, int steps,
                    VectorView<double> y, std::shared_ptr<NonlinearFunction> rhs,
                    std::function<void(double,VectorView<double>)> callback = nullptr)

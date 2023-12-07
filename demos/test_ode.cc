@@ -26,13 +26,13 @@ class MassSpring : public NonlinearFunction
 
 int main()
 {
-  double tend = 4*M_PI;
+  double tend = 32*M_PI;
   int steps = 100;
   Vector<double> y {2};
   y(0)=1;
   y(1)=0;
   auto rhs = std::make_shared<MassSpring>();
   
-  SolveODE_IE(tend, steps, y, rhs,
+  SolveODE_CN(tend, steps, y, rhs,
               [](double t, VectorView<double> y) { std::cout << t << "  " << y(0) << " " << y(1) << std::endl; });
 }

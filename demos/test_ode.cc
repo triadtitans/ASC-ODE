@@ -1,6 +1,9 @@
 #include <nonlinfunc.h>
 #include <ode.h>
 #include <math.h>
+#include <iostream>
+#include <string>
+#include <fstream>
 using namespace ASC_ode;
 
 
@@ -41,18 +44,36 @@ class ElectricNetwork : public NonlinearFunction
     df(0,1) = -(100*M_PI)*sin(100*M_PI*x(1));
   }
 };
+std::string formatVec(std::vector<double> v) { 
+  std::string outstring = "";
+  for( size_t i = 0; i < v.size(); ++i ) {
+    outstring += std::to_string(v[i]);
+    outstring += ",";
+  }
+  outstring.pop_back();
+  return outstring;
+}
 
 int main()
 {
   double tend = 32*M_PI;
-  int steps = 100;
+  int steps = 10000;
   Vector<double> y {2};
   y(0)=1;
   y(1)=0;
   auto rhs = std::make_shared<ElectricNetwork>();
+
+  std::vector<double> time;
+  std::vector<double> f1;
   
   SolveODE_CN(tend, steps, y, rhs,
-              [](double t, VectorView<double> y) { std::cout << t << "  " << y(0) << " " << y(1) << std::endl; });
+              [&time,&f1](double t, VectorView<double> y) { std::cout << t << "  " << y(0) << " " << y(1) << std::endl; time.push_back(t); f1.push_back(y(0)); });
 
+  std::ofstream file;
+  file.open ("./data.txt");
 
+  file << "time := {" << formatVec(time) << "}" << std::endl;
+  file << "function1 := {" << formatVec(f1) << "}" << std::endl;
+  file << "points = Transpose[{time, function1}]\n" << "ListPlot[points, Joined -> True, PlotMarkers -> Automatic, PlotStyle -> Blue]";
+  file.close();
 }

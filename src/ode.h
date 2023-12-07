@@ -29,7 +29,27 @@ namespace ASC_ode
         if (callback) callback(t, y);
       }
   }
+ void SolveODE_CN(double tend, int steps,
+                   VectorView<double> y, std::shared_ptr<NonlinearFunction> rhs,
+                   std::function<void(double,VectorView<double>)> callback = nullptr)
+  {
+    double dt = tend/steps;
+    auto yold = std::make_shared<ConstantFunction>(y);
+    Vector<double> fold(rhs->DimF());
+    rhs->Evaluate(y,fold);
+    auto rhsold = std::make_shared<ConstantFunction>(fold);
+    auto ynew = std::make_shared<IdentityFunction>(y.Size());
+    auto equ = ynew-yold - dt * 1/2 * (rhsold + rhs);
 
+    double t = 0;
+    for (int i = 0; i < steps; i++)
+      {
+        NewtonSolver (equ, y);
+        yold->Set(y);
+        t += dt;
+        if (callback) callback(t, y);
+      }
+  }
   
 
   

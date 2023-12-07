@@ -70,7 +70,7 @@ int main()
               [&time,&f1](double t, VectorView<double> y) { std::cout << t << "  " << y(0) << " " << y(1) << std::endl; time.push_back(t); f1.push_back(y(0)); });
 
   std::ofstream file;
-  file.open ("./data.txt");
+  file.open("./data.txt", std::ios::trunc);
 
   file << "time := {" << formatVec(time) << "}" << std::endl;
   file << "function1 := {" << formatVec(f1) << "}" << std::endl;

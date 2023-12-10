@@ -9,6 +9,38 @@
 
 namespace ASC_ode
 {
+
+  class BlockMatVec: public NonlinearFunction {
+    size_t DimX() const override { return w_ * n_; }
+    size_t DimF() const override { return h_ * n_; }
+    double RC = 0.01;
+    int w_;
+    int h_;
+    int n_;
+    Matrix<double> m1_;
+
+    BlockMatVec(int h, int w, int n, MatrixView<double> m1): h_(h), w_(w), n_(n), m1_(m1) {};
+
+    void Evaluate (VectorView<double> x, VectorView<double> f) const override
+    {
+      // A has dimension h_ x w_
+      for(size_t j = 0; j < h_; j++) {
+        f.Range(j * n_, (j + 1) * n_) = 0;
+        for(size_t l = 0; l < w_; l++) {
+            f.Range(j * n_, (j + 1) * n_) += m1_(j,l)*x.Slice(l * n_, (l + 1) * n_);
+        };
+      };
+    }
+    
+    void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
+    { 
+      for(size_t j = 0; j < h_; j++) {
+        for(size_t l = 0; l < w_; l++) {
+          df.Rows(j * h_, n_).Cols(l * w_, n_) = m1_(j,l);
+        }
+      }
+    }
+  };
   
   // implicit Euler method for dy/dt = rhs(y)
   void SolveODE_IE(double tend, int steps,

@@ -15,8 +15,7 @@ class RHS : public NonlinearFunction
   }
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
   {
-    // TODO what is this?
-    // df(0) = -1;
+    df(0, 0) = -1;
   }
 };
 
@@ -25,12 +24,10 @@ int main()
 {
   double tend = 2*M_PI;
   int steps = 100;
-  Vector<> x { 2 };
-  x(0)=1;
-  x(1)=0;
-  Vector<> dx { 2 };
+  Vector<> x (1);
+  x(0)=1.;
+  Vector<> dx (1);
   dx(0)=0;
-  dx(1)=0;
   auto rhs = std::make_shared<RHS>();
   auto mass = std::make_shared<IdentityFunction>(1);
   SolveODE_Newmark(tend, steps, x, dx, rhs, mass,

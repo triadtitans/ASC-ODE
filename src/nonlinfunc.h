@@ -231,7 +231,7 @@ namespace ASC_ode
       size_t fdim = func->DimF();
       size_t xdim = func->DimX();
       for (size_t i = 0; i<s; i++) {
-        func->Evaluate(x.Range(i*xdim, xdim), f.Range(i*fdim, fdim));
+        func->Evaluate(x.Range(i*xdim, (i+1)*xdim), f.Range(i*fdim, (i+1)*fdim));
       }
     }
     void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
@@ -240,7 +240,7 @@ namespace ASC_ode
       size_t fdim = func->DimF();
       size_t xdim = func->DimX();
       for (size_t i = 0; i<s; i++) {
-        func->EvaluateDeriv(x.Range(i*xdim,xdim), df.Rows(i*fdim,fdim).Cols(i*xdim, xdim));
+        func->EvaluateDeriv(x.Range(i*xdim,(i+1)*xdim), df.Rows(i*fdim,fdim).Cols(i*xdim, xdim));
       }
     }
   };

@@ -58,17 +58,24 @@ std::string formatVec(std::vector<double> v) {
 
 int main()
 {
-  double tend = 0.3;
-  int steps = 200;
+  double tend = 4*M_PI;
+  int steps = 1000;
   Vector<double> y {2};
-  y(0)=0;
+  y(0)=1;
   y(1)=0;
-  auto rhs = std::make_shared<ElectricNetwork>();
+  auto rhs = std::make_shared<MassSpring>();
+
+  // Vec<2,double> v;
+  // v(0) = 2;
+  // v(1) = 2;
+
+  // Vector<double> z(2);
+  // z = y+v;
 
   std::vector<double> time;
   std::vector<double> f1;
   
-  SolveODE_CN(tend, steps, y, rhs,
+  SolveODE_IE(tend, steps, y, rhs,
               [&time,&f1](double t, VectorView<double> y) { std::cout << t << "  " << y(0) << " " << y(1) << std::endl; time.push_back(t); f1.push_back(y(0)); });
 
   // std::ofstream file;
@@ -78,4 +85,13 @@ int main()
   // file << "function1 := {" << formatVec(f1) << "}" << std::endl;
   // file << "points := Transpose[{time, function1}]\n" << "ListPlot[points, Joined -> True, PlotMarkers -> None, PlotStyle -> Blue]";
   // file.close();
+
+  // TODO
+  // Vec<3>
+  // template<size, T>
+  // class Vec {
+  //   T data[size];
+  // }
+
+  // test newmark, test alpha soll laufen
 }

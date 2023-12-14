@@ -40,7 +40,7 @@ class dLagrange : public NonlinearFunction
 int main()
 {
   double tend = 50*2*M_PI;
-  double steps = 1000;
+  double steps = 10000;
   Vector<double> x { 3 };
   x(0)=1;
   Vector<double> dx { 3 };

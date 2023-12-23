@@ -9,7 +9,7 @@ set (CMAKE_CXX_STANDARD 17)
 #  HINTS /usr $ENV{NETGENDIR}/.. /tmp/inst/usr /opt/netgen/ /Applications/Netgen.app/Contents/Resources/CMake C:/netgen
 #)
 
-
+set (CXXFLAGS "-g -O0")
 include_directories(src)
 add_subdirectory (src)
 

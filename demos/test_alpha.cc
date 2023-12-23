@@ -39,6 +39,7 @@ class dLagrange : public NonlinearFunction
 
 int main()
 {
+  //std::cout << "main";
   double tend = 50*2*M_PI;
   double steps = 10000;
   Vector<double> x { 3 };

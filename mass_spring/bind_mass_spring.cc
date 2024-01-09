@@ -74,7 +74,7 @@ PYBIND11_MODULE(mass_spring, m) {
     py::class_<MassSpringSystem<3>> (m, "MassSpringSystem3d")
       .def(py::init<>())
       .def("__str__", [](MassSpringSystem<3> & mss) {
-        stringstream sstr;
+        std::stringstream sstr;
         sstr << mss;
         return sstr.str();
       })

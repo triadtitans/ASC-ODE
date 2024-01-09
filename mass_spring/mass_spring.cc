@@ -11,7 +11,7 @@ int main()
   auto mB = mss.AddMass( { 1, { 2.0, 0.0 } } );
   mss.AddSpring ( { 1, 20, { mA, mB } } );
   
-  cout << "mss: " << endl << mss << endl;
+  std::cout << "mss: " << std::endl << mss << std::endl;
 
 
   double tend = 10;
@@ -27,6 +27,6 @@ int main()
   mss.GetState (x, dx, ddx);
   
   SolveODE_Newmark(tend, steps, x, dx,  mss_func, mass,
-                   [](double t, VectorView<double> x) { cout << "t = " << t
-                                                             << ", x = " << Vec<4>(x) << endl; });
+                   [](double t, VectorView<double> x) { std::cout << "t = " << t
+                                                             << ", x = " << Vec<4>(x) << std::endl; });
 }

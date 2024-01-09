@@ -3,13 +3,14 @@
 
 
 
-#include <nonlinfunc.h>
-#include <ode.h>
+#include "nonlinfunc.h"
+#include "ode.h"
 
 using namespace ASC_ode;
 
-#include <vector.hpp>
-using namespace ngbla;
+#include "vector.h"
+#include "matrix.h"
+using namespace ASC_bla;
 
 
 
@@ -40,7 +41,7 @@ public:
   size_t nr;
 };
 
-ostream & operator<< (ostream & ost, const Connector & con)
+std::ostream & operator<< (std::ostream & ost, const Connector & con)
 {
   ost << "type = " << int(con.type) << ", nr = " << con.nr;
   return ost;
@@ -92,9 +93,9 @@ public:
 
   void GetState (VectorView<> values, VectorView<> dvalues, VectorView<> ddvalues)
   {
-    auto valmat = values.AsMatrix(Masses().size(), D);
-    auto dvalmat = dvalues.AsMatrix(Masses().size(), D);
-    auto ddvalmat = ddvalues.AsMatrix(Masses().size(), D);    
+    auto valmat = AsMatrix(values, Masses().size(), D);
+    auto dvalmat = AsMatrix(dvalues, Masses().size(), D);
+    auto ddvalmat = AsMatrix(ddvalues, Masses().size(), D);    
 
     for (size_t i = 0; i < Masses().size(); i++)
       {
@@ -106,9 +107,9 @@ public:
   
   void SetState (VectorView<> values, VectorView<> dvalues, VectorView<> ddvalues)
   {
-    auto valmat = values.AsMatrix(Masses().size(), D);
-    auto dvalmat = dvalues.AsMatrix(Masses().size(), D);
-    auto ddvalmat = ddvalues.AsMatrix(Masses().size(), D);
+    auto valmat = AsMatrix(values, Masses().size(), D);
+    auto dvalmat = AsMatrix(dvalues, Masses().size(), D);
+    auto ddvalmat = AsMatrix(ddvalues, Masses().size(), D);
 
     for (size_t i = 0; i < Masses().size(); i++)
       {
@@ -120,20 +121,20 @@ public:
 };
 
 template <int D>
-ostream & operator<< (ostream & ost, MassSpringSystem<D> & mss)
+std::ostream & operator<< (std::ostream & ost, MassSpringSystem<D> & mss)
 {
-  ost << "fixes:" << endl;
+  ost << "fixes:" << std::endl;
   for (auto f : mss.Fixes())
-    ost << f.pos << endl;
+    ost << f.pos << std::endl;
 
-  ost << "masses: " << endl;
+  ost << "masses: " << std::endl;
   for (auto m : mss.Masses())
-    ost << "m = " << m.mass << ", pos = " << m.pos << endl;
+    ost << "m = " << m.mass << ", pos = " << m.pos << std::endl;
 
-  ost << "springs: " << endl;
+  ost << "springs: " << std::endl;
   for (auto sp : mss.Springs())
     ost << "length = " << sp.length << "stiffness = " << sp.stiffness
-        << ", C1 = " << sp.connections[0] << ", C2 = " << sp.connections[1] << endl;
+        << ", C1 = " << sp.connections[0] << ", C2 = " << sp.connections[1] << std::endl;
   return ost;
 }
 
@@ -153,8 +154,8 @@ public:
   {
     f = 0.0;
     
-    auto xmat = x.AsMatrix(mss.Masses().size(), D);
-    auto fmat = f.AsMatrix(mss.Masses().size(), D);
+    auto xmat = AsMatrix(x,mss.Masses().size(), D);
+    auto fmat = AsMatrix(f,mss.Masses().size(), D);
     
     for (size_t i = 0; i < mss.Masses().size(); i++)
       fmat.Row(i) = mss.Masses()[i].mass*mss.Gravity();
@@ -172,8 +173,8 @@ public:
         else
           p2 = xmat.Row(c2.nr);
 
-        double force = spring.stiffness * (L2Norm(p1-p2)-spring.length);
-        Vec<D> dir12 = 1.0/L2Norm(p1-p2) * (p2-p1);
+        double force = spring.stiffness * (Norm(p1-p2)-spring.length);
+        Vec<D> dir12 = 1.0/Norm(p1-p2) * (p2-p1);
         if (c1.type == Connector::MASS)
           fmat.Row(c1.nr) += force*dir12;
         if (c2.type == Connector::MASS)

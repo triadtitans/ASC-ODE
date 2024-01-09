@@ -166,7 +166,7 @@ public:
     : mss(_mss) { }
 
   virtual size_t DimX() const { return D*mss.Masses().size() + mss.Beams().size(); }
-  virtual size_t DimF() const { return D*mss.Masses().size()+ mss.Beams().size();; }
+  virtual size_t DimF() const { return D*mss.Masses().size() + mss.Beams().size(); }
   
   virtual void Evaluate (VectorView<double> x, VectorView<double> f) const
   {

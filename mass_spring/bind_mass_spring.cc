@@ -59,10 +59,16 @@ PYBIND11_MODULE(mass_spring, m) {
                              [](Spring & s) { return s.connections; })
       ;
 
+    py::class_<Beam> (m, "Beam")
+      .def(py::init<double, std::array<Connector,2>>())
+      .def_property_readonly("connections",
+                             [](Beam & b) { return b.connections; })
+      ;
     
     py::bind_vector<std::vector<Mass<3>>>(m, "Masses3d");
     py::bind_vector<std::vector<Fix<3>>>(m, "Fixes3d");
     py::bind_vector<std::vector<Spring>>(m, "Springs");        
+    py::bind_vector<std::vector<Beam>>(m, "Beams");        
     
     
     py::class_<MassSpringSystem<2>> (m, "MassSpringSystem2d")
@@ -83,9 +89,11 @@ PYBIND11_MODULE(mass_spring, m) {
       .def("Add", [](MassSpringSystem<3> & mss, Mass<3> m) { return mss.AddMass(m); })
       .def("Add", [](MassSpringSystem<3> & mss, Fix<3> f) { return mss.AddFix(f); })
       .def("Add", [](MassSpringSystem<3> & mss, Spring s) { return mss.AddSpring(s); })            
+      .def("Add", [](MassSpringSystem<3> & mss, Beam b) { return mss.AddBeam(b); })          
       .def_property_readonly("masses", [](MassSpringSystem<3> & mss) -> auto& { return mss.Masses(); })
       .def_property_readonly("fixes", [](MassSpringSystem<3> & mss) -> auto& { return mss.Fixes(); })
       .def_property_readonly("springs", [](MassSpringSystem<3> & mss) -> auto& { return mss.Springs(); })            
+      .def_property_readonly("beams", [](MassSpringSystem<3> & mss) -> auto& { return mss.Beams(); })            
       .def("__getitem__", [](MassSpringSystem<3> mss, Connector & c) {
         if (c.type==Connector::FIX) return py::cast(mss.Fixes()[c.nr]);
         else return py::cast(mss.Masses()[c.nr]);
@@ -102,13 +110,13 @@ PYBIND11_MODULE(mass_spring, m) {
     
 
     m.def("Simulate", [](MassSpringSystem<3> & mss, double tend, size_t steps) {
-      Vector<> x(3*mss.Masses().size());
-      Vector<> dx(3*mss.Masses().size());
-      Vector<> ddx(3*mss.Masses().size());
+      Vector<> x(3*mss.Masses().size() + mss.Beams().size());
+      Vector<> dx(3*mss.Masses().size() + mss.Beams().size());
+      Vector<> ddx(3*mss.Masses().size() + mss.Beams().size());
       mss.GetState (x, dx, ddx);
       
       auto mss_func = std::make_shared<MSS_Function<3>> (mss);
-      auto mass = std::make_shared<IdentityFunction> (x.Size());      
+      auto mass = std::make_shared<Projector> (x.Size(), 0, mss.Masses().size()*3);
       
       SolveODE_Alpha(tend, steps, 0.8, x, dx, ddx, mss_func, mass);
 

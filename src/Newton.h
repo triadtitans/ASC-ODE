@@ -26,7 +26,7 @@ namespace ASC_ode
         x -= fprime*res;
         //std::cout << "new x = " << x << std::endl;
 
-        double err= Norm(res);
+        double err = Norm(res);
         if (callback)
           callback(i, err, x);
         if (err < tol) return;

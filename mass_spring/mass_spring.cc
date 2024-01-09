@@ -15,14 +15,14 @@ int main()
 
 
   double tend = 10;
-  double steps = 100000;
+  double steps = 1000;
   
   Vector<> x(2*mss.Masses().size()+1);
   Vector<> dx(2*mss.Masses().size()+1);  
   Vector<> ddx(2*mss.Masses().size()+1);  
 
   auto mss_func = std::make_shared<MSS_Function<2>> (mss);
-  auto mass = std::make_shared<IdentityFunction> (x.Size());      
+  auto mass = std::make_shared<Projector> (x.Size(),0,4);      
 
   mss.GetState (x, dx, ddx);
   

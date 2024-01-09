@@ -3,7 +3,7 @@ target_link_libraries (test_mass_spring PUBLIC)
 
 
 IF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm") 
-set (pybind11_DIR ../venv/lib/python3.9/site-packages/pybind11/share/cmake/pybind11)
+set (pybind11_DIR ../venv/lib/python3.12/site-packages/pybind11/share/cmake/pybind11)
 ENDIF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
 
 

@@ -1,8 +1,10 @@
 import sys
-sys.path.append('/Users/joachim/texjs/lva/ws2324/ScientificComputing/ASC-ODE/build/mass_spring')
+import os
+path = os.getenv("MASS_SPRING_PATH")
+sys.path.append(path)
 
 from mass_spring import *
-import ngsolve.bla
+import ASCsoft.bla as bla
 
 
 mss = MassSpringSystem3d()

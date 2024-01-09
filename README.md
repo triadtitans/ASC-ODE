@@ -21,6 +21,10 @@ pip install BLA/. -v
 # cmake -S. -B build
 # cd build && make build && cd ..
 
-mv build/mass_spring/*.so build/mass_spring/mass_spring.so
+# rename mass_spring shared object
+rm -f build/mass_spring/mass_spring.so
+mv build/mass_spring/mass_spring.cp*.so build/mass_spring/mass_spring.so
+
+export MASS_SPRING_PATH="$(pwd)/build/mass_spring"
 jupyter-lab
 ```

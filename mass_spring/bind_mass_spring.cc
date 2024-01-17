@@ -37,7 +37,12 @@ PYBIND11_MODULE(mass_spring, m) {
     
     m.def("Mass", [](double m, std::array<double,3> p)
     {
-      return Mass<3>{m, { p[0], p[1], p[2] }};
+      return Mass<3>{m, { p[0], p[1], p[2]}};
+    });
+
+    m.def("Mass", [](double m, std::array<double,3> p,std::array<double,3> v)
+    {
+      return Mass<3>{m, { p[0], p[1], p[2]}, {v[0],v[1],v[2]}};
     });
 
     
@@ -100,6 +105,14 @@ PYBIND11_MODULE(mass_spring, m) {
       })
       
       .def("GetState", [] (MassSpringSystem<3> & mss) {
+        Vector<> x(3*mss.Masses().size());
+        Vector<> dx(3*mss.Masses().size());
+        Vector<> ddx(3*mss.Masses().size());
+        mss.GetState (x, dx, ddx);
+        return x;
+      })
+
+      .def("setVelocity", [] (MassSpringSystem<3> & mss) {
         Vector<> x(3*mss.Masses().size());
         Vector<> dx(3*mss.Masses().size());
         Vector<> ddx(3*mss.Masses().size());

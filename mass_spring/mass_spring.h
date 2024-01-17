@@ -85,7 +85,7 @@ public:
     masses.push_back (m);
     return { Connector::MASS, masses.size()-1 };
   }
-  
+
   size_t AddSpring (Spring s) // double length, double stiffness, Connector c1, Connector c2)
   {
     springs.push_back (s); // Spring{length, stiffness, { c1, c2 } });

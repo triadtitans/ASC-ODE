@@ -38,6 +38,27 @@ namespace ASC_ode
     }
   };
 
+  class LinearFunction : public NonlinearFunction
+  {
+    size_t n;
+    MatrixView<double> m;
+    public:
+    LinearFunction (size_t _n, MatrixView<double> _m) : n(_n), m(_m) { 
+    } 
+    size_t DimX() const override { return n; }
+    size_t DimF() const override { return n; }
+    void Evaluate (VectorView<double> x, VectorView<double> f) const override
+    {
+      f = m*x;
+    }
+    
+    void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
+    {
+      df = m;
+    }
+  };
+
+
   class ConstantFunction : public NonlinearFunction
   {
     Vector<> val;

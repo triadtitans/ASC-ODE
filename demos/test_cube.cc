@@ -157,6 +157,7 @@ int main()
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
   Vector<double> dq { 18 };
   dq(0)=0.00001;
+ 
   Vector<double> ddq { 18 };
   MatrixView<double> mass_matrix(18,18,mass_matrix_data);
   auto rhs = std::make_shared<dLagrange>();
@@ -165,7 +166,10 @@ int main()
   SolveODE_Alpha (tend, steps, 0.8, q, dq, ddq, rhs, mass, 
                    // [](double t, VectorView<double> x) { cout << "t = " << t << ", x = " << x(0) << " " << x(1) << " " << x(2) << endl; }
                    [](double t, VectorView<double> q) { 
-                    std::cout<<std::fixed <<"{"<< t << ": Translation =" << q(0) << " ," << q(1) << ", "<<", " << q(2) << "} " << std::endl; }                   
+                    std::cout<<std::fixed << t << ": Translation =" << q(0) << " ," << q(1) << ", "<<", " << q(2) << "} " << std::endl
+                      <<"\t"<< " Rotation: " << q(3) << " ," << q(4) << ", "<<", " << q(5) << "} " << std::endl
+                      <<"\t"<< "           " << q(6) << " ," << q(7) << ", "<<", " << q(8) << "} " << std::endl
+                      <<"\t"<< "           " << q(9) << " ," << q(10) << ", "<<", " << q(11) << "} " << std::endl; }                   
                    );
   std::cout << "}";
 }

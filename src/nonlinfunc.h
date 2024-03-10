@@ -40,24 +40,59 @@ namespace ASC_ode
 
   class LinearFunction : public NonlinearFunction
   {
-    size_t n;
-    MatrixView<double> m;
+
+    Matrix<double> m_;
     public:
-    LinearFunction (size_t _n, MatrixView<double> _m) : n(_n), m(_m) { 
+    template <typename T>
+    LinearFunction ( MatrixExpr<T>& m) : m_(m) { 
     } 
-    size_t DimX() const override { return n; }
-    size_t DimF() const override { return n; }
+    size_t DimX() const override { return m_.Width(); }
+    size_t DimF() const override { return m_.Height(); }
     void Evaluate (VectorView<double> x, VectorView<double> f) const override
     {
-      f = m*x;
+      f = m_*x;
     }
     
     void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
     {
-      df = m;
+      df = m_;
     }
   };
 
+
+  void dNumeric(const NonlinearFunction& f, VectorView<double> x, MatrixView<double> df){
+    double eps = 1e-8;
+    Vector<> xl(f.DimX()), xr(f.DimX()), fl(f.DimF()), fr(f.DimF());
+    for (size_t i = 0; i < f.DimX(); i++)
+      {
+        xl = x;
+        xl(i) -= eps;
+        xr = x;
+        xr(i) += eps;
+        f.Evaluate (xl, fl);
+        f.Evaluate (xr, fr);
+        df.Col(i) = 1/(2*eps) * (fr-fl);
+      }
+  }
+
+class NumericDerivative : public NonlinearFunction
+{
+  std::shared_ptr<NonlinearFunction> g_;
+  public:
+  size_t DimX() const override { return 18; }
+  size_t DimF() const override { return 18; }
+  NumericDerivative(std::shared_ptr<NonlinearFunction> g): g_(g){};
+  void Evaluate (VectorView<double> x, VectorView<double> f) const override
+  {
+    Matrix<double> fmat (1, 18);
+    g_->EvaluateDeriv(x, fmat);
+    f = fmat.Row(0);
+  }
+  virtual void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const
+  {
+    dNumeric(*this,x,df);
+  }
+};
 
   class ConstantFunction : public NonlinearFunction
   {

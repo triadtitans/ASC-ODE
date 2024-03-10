@@ -30,3 +30,4 @@ add_executable (test_cube demos/test_cube.cc)
 target_link_libraries (test_cube PUBLIC)
 
 add_subdirectory (mass_spring)
+add_subdirectory (rigid_body)

@@ -157,11 +157,14 @@ int main()
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
   Vector<double> dq { 18 };
   dq(0)=0.00001;
+  dq(10)=0.001;
  
   Vector<double> ddq { 18 };
+
   MatrixView<double> mass_matrix(18,18,mass_matrix_data);
+
   auto rhs = std::make_shared<dLagrange>();
-  auto mass = std::make_shared<LinearFunction>(18,mass_matrix);
+  auto mass = std::make_shared<LinearFunction>(mass_matrix);
   std::cout << "list:={";
   SolveODE_Alpha (tend, steps, 0.8, q, dq, ddq, rhs, mass, 
                    // [](double t, VectorView<double> x) { cout << "t = " << t << ", x = " << x(0) << " " << x(1) << " " << x(2) << endl; }

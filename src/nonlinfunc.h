@@ -44,7 +44,7 @@ namespace ASC_ode
     Matrix<double> m_;
     public:
     template <typename T>
-    LinearFunction ( MatrixExpr<T>& m) : m_(m) { 
+    LinearFunction (const MatrixExpr<T>& m) : m_(m) { 
     } 
     size_t DimX() const override { return m_.Width(); }
     size_t DimF() const override { return m_.Height(); }

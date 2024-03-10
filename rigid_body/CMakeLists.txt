@@ -11,3 +11,8 @@ find_package(pybind11 CONFIG REQUIRED)
 
 pybind11_add_module(rigid_body bind_rigid_body.cc)
 target_link_libraries (rigid_body PUBLIC)
+add_custom_command(TARGET rigid_body POST_BUILD 
+  COMMAND "${CMAKE_COMMAND}" -E copy 
+     "$<TARGET_FILE:rigid_body>"
+     "rigid_body.so" 
+  COMMENT "Copying to output directory")

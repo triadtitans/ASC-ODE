@@ -26,5 +26,6 @@ rm -f build/mass_spring/mass_spring.so
 mv build/mass_spring/mass_spring.cp*.so build/mass_spring/mass_spring.so
 
 export MASS_SPRING_PATH="$(pwd)/build/mass_spring"
+export RIGID_BODY_PATH="$(pwd)/build/rigid_body"
 jupyter-lab
 ```

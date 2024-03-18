@@ -22,7 +22,10 @@ PYBIND11_MODULE(rigid_body, m) {
         return sstr.str();
       })
       .def("setTranslation",&Transformation::setTranslation)
-      .def("setRotation",&Transformation::setRotation);
+      .def("setRotation",&Transformation::setRotation)
+      .def("asTuple",[](Transformation& t){
+        return py::make_tuple(t.q_(3),t.q_(4),t.q_(5),t.q_(0),t.q_(6),t.q_(7),t.q_(8),t.q_(1),t.q_(9),t.q_(10),t.q_(11),t.q_(2));
+      });
 
     py::class_<MassMatrix>(m,"MassMatrix")
       .def(py::init<>())

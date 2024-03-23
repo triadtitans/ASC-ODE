@@ -11,10 +11,19 @@ namespace py = pybind11;
 PYBIND11_MAKE_OPAQUE(Transformation);
 PYBIND11_MAKE_OPAQUE(MassMatrix);
 
-PYBIND11_MODULE(rigid_body, m) {
-    m.doc() = "rigid body simulator";       
+PYBIND11_MODULE(rigid_body, rbd) {
+
+    // adds the BLA bindings as submodule, accessible as rigid_body.bla.Matrix etc.
+    // https://github.com/pybind/pybind11/discussions/4027
+    auto m = rbd.def_submodule("bla", "basic linear algebra");
+    #include "bind_bla_obj.h"
+
+
+
+    // the main bindings:
+    rbd.doc() = "rigid body simulator";       
        
-    py::class_<Transformation>(m,"Transformation")
+    py::class_<Transformation>(rbd,"Transformation")
       .def(py::init<>())
       .def("__str__", [](Transformation & t) {
         std::stringstream sstr;
@@ -29,13 +38,13 @@ PYBIND11_MODULE(rigid_body, m) {
 
       });
 
-    py::class_<MassMatrix>(m,"MassMatrix")
+    py::class_<MassMatrix>(rbd,"MassMatrix")
       .def(py::init<>())
       .def("set",&MassMatrix::set);
 
-    m.def("mass_cube",[](){return MassMatrix(MatrixView<double>(18,18,mass_matrix_data));});
+    rbd.def("mass_cube",[](){return MassMatrix(MatrixView<double>(18,18,mass_matrix_data));});
 
-    py::class_<RigidBody> (m, "RigidBody")
+    py::class_<RigidBody> (rbd, "RigidBody")
       .def(py::init<>())
       /*.def("__str__", [](RigidBody & rb) {
         std::stringstream sstr;

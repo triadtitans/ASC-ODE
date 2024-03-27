@@ -13,17 +13,17 @@ struct Transformation{
   Vector<double> q_;
   Transformation(Vector<double> q):q_(q){};
   Transformation():q_(18){}
-  void setTranslation(double a, double b, double c){q_(0)=a;q_(1)=b;q_(2)=c;}
+  void setTranslation(double a, double b, double c){q_(0)=a;q_(4)=b;q_(8)=c;}
   void setRotation(int i, int j, double r){
     if(i>2||j>2 || j<0 || i <0) throw std::invalid_argument("Rotation Matrix is 3x3");
-    q_(3+i*3+j)=r;
+    q_((4*i + 1) + j)=r; // note the ordering of q
   }
 };
 
   std::ostream& operator<<(std::ostream& oss, const Transformation& t){
-      oss<<std::fixed << " Translation: \t" << t.q_(0) << " ," << t.q_(1) << ", "<<", " << t.q_(2) << std::endl
-                      << " Rotation: \t" << t.q_(3) << " ," << t.q_(4) << ", "<<", " << t.q_(5) <<  std::endl
-                     << " \t\t" << t.q_(6) << " ," << t.q_(7) << ", "<<", " << t.q_(8) <<  std::endl
+      oss<<std::fixed << " Translation: \t" << t.q_(0) << " ," << t.q_(4) << ", "<<", " << t.q_(8) << std::endl
+                      << " Rotation: \t" << t.q_(1) << " ," << t.q_(2) << ", "<<", " << t.q_(3) <<  std::endl
+                     << " \t\t" << t.q_(5) << " ," << t.q_(6) << ", "<<", " << t.q_(7) <<  std::endl
                       << "\t\t" << t.q_(9) << " ," << t.q_(10) << ", "<<", " << t.q_(11) << std::endl; 
     return oss;
   }    
@@ -42,13 +42,16 @@ class RigidBody {
   Vector<double> q_;
   Vector<double> dq_;
   Vector<double> ddq_;
+  Vector<double> initialq_;
+  Vector<double> initialdq_;
+  Vector<double> initialddq_;
   int dim_;
   std::shared_ptr<LinearFunction> mass_function;
 public:
   template <typename T>
   RigidBody(MatrixExpr<T>& m,Vector<double> q,Vector<double> dq,Vector<double> ddq)
         : dim_(m.Height()), mass_function(std::make_shared<LinearFunction>(m)),
-          q_(q),dq_(dq),ddq_(ddq){
+          q_(q),dq_(dq),ddq_(ddq), initialq_(q),initialdq_(dq),initialddq_(ddq){
     if(m.Width() != dim_) throw std::invalid_argument("Mass matrix must be square");
     if(q.Size() != dim_) throw std::invalid_argument("q Vector must match mass matrix");
     if(dq.Size() != dim_) throw std::invalid_argument("q Vector must match mass matrix");
@@ -57,8 +60,8 @@ public:
 
   RigidBody()
         :  dim_(18), mass_function(std::make_shared<LinearFunction>(Matrix(18,18))),
-          q_(18),dq_(18),ddq_(18){
-    q_(3)=1;q_(7)=1;q_(11)=1;
+          q_(18),dq_(18),ddq_(18), initialq_(18),initialdq_(18),initialddq_(18){
+    q_(1)=1;q_(6)=1;q_(11)=1;
   }
 
   void setQ(Transformation t){q_=t.q_;}
@@ -66,6 +69,19 @@ public:
   void setDdq(Transformation t){ddq_=t.q_;}
 
   void setMass(Matrix<double> m){mass_function=std::make_shared<LinearFunction>(m);}
+
+  // saves a state for the reset button
+  void saveState(){
+    initialq_ = q_;
+    initialdq_ = dq_;
+    initialddq_ = ddq_;
+  }
+  // resets position and rotation to last saved state
+  void reset(){
+    q_ = initialq_;
+    dq_ = initialdq_;
+    ddq_ = initialddq_;
+  }
 
   Transformation getQ(){return q_;}
   Transformation getDq(){return dq_;}
@@ -89,8 +105,16 @@ class RhsRigidBody : public NonlinearFunction
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
   {
     //ACHTUNG! KEINE AHNUNG OB INDEX +-1 
-    VectorView<double> bview = x.Range(3,12);
-    MatrixView<double> b = AsMatrix(bview,3,3);
+    // VectorView<double> bview = x.Range(3,12);
+    // MatrixView<double> b = AsMatrix(bview,3,3);
+    Matrix<double> b (3, 3);
+    // extract b; might be made more elegant using Range and Row
+    /* b(0, 0) = x(1); b(0, 1) = x(2); b(0, 2) = x(3);
+    b(1, 0) = x(5); b(1, 1) = x(6); b(1, 2) = x(7);
+    b(2, 0) = x(9); b(2, 1) = x(10); b(2, 2) = x(11); */
+    b.Row(0) = x.Range(1, 4);
+    b.Row(1) = x.Range(5, 8);
+    b.Row(2) = x.Range(9, 12);
     auto c = TransposeMatExpr(b)* b + (-1)*IdMatExpr(3);
     Vector<double> g(6);
     g(0)=c(0, 0);
@@ -108,6 +132,7 @@ class RhsRigidBody : public NonlinearFunction
 
 };
 
+// highly deprecated (possibly incorrect):
 inline double mass_matrix_data[18*18] = 
 {0.5, 0., 0., 0.25, 0.25, 0.25, 0., 0., 0., 0., 0., 0., 0., 0., 0., \
 0., 0., 0., 0., 0.5, 0., 0., 0., 0., 0.25, 0.25, 0.25, 0., 0., 0., \

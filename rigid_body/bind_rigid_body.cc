@@ -9,7 +9,7 @@
 namespace py = pybind11;
 
 PYBIND11_MAKE_OPAQUE(Transformation);
-PYBIND11_MAKE_OPAQUE(MassMatrix);
+// PYBIND11_MAKE_OPAQUE(MassMatrix);
 
 PYBIND11_MODULE(rigid_body, rbd) {
 
@@ -33,16 +33,20 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def("setTranslation",&Transformation::setTranslation)
       .def("setRotation",&Transformation::setRotation)
       .def("asTuple",[](Transformation& t){
-        //return py::make_tuple(t.q_(3),t.q_(4),t.q_(5),t.q_(0),t.q_(6),t.q_(7),t.q_(8),t.q_(1),t.q_(9),t.q_(10),t.q_(11),t.q_(2),0,0,0,1);
+        // return py::make_tuple(t.q_(3),t.q_(4),t.q_(5),t.q_(0),t.q_(6),t.q_(7),t.q_(8),t.q_(1),t.q_(9),t.q_(10),t.q_(11),t.q_(2),0,0,0,1);
+        // *column-major* transformation matrix as in https://threejs.org/docs/#api/en/math/Matrix4
         return py::make_tuple(t.q_(3),t.q_(6),t.q_(9),0,t.q_(4),t.q_(7),t.q_(10),0,t.q_(5),t.q_(8),t.q_(11),0,t.q_(0),t.q_(1),t.q_(2),1);
-
       });
 
-    py::class_<MassMatrix>(rbd,"MassMatrix")
+    /* py::class_<MassMatrix>(rbd,"MassMatrix")
       .def(py::init<>())
-      .def("set",&MassMatrix::set);
+      .def("set",&MassMatrix::set); */
 
-    rbd.def("mass_cube",[](){return MassMatrix(MatrixView<double>(18,18,mass_matrix_data));});
+    // rbd.def("mass_cube",[](){return MassMatrix(MatrixView<double>(18,18,mass_matrix_data));});
+
+    Matrix<double> MASS_CUBE (18, 18);
+    MASS_CUBE = MatrixView<double>(18, 18, mass_matrix_data);
+    rbd.attr("MASS_CUBE") = MASS_CUBE;
 
     py::class_<RigidBody> (rbd, "RigidBody")
       .def(py::init<>())
@@ -57,6 +61,7 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def("setMass",&RigidBody::setMass)    
       .def("simulate",[](RigidBody& r, double tend,double steps) {r.simulate(tend,steps);}); 
     
-      
+    rbd.def("mass_matrix_from_inertia", &mass_matrix_from_inertia, "generates the a mass matrix from given inertia, center and mass",
+            py::arg("inertia_matrix"), py::arg("center_of_mass"), py::arg("mass"));
     
 }

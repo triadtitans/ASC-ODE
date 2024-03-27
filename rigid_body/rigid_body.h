@@ -17,7 +17,7 @@ struct Transformation{
   void setRotation(int i, int j, double r){
     if(i>2||j>2 || j<0 || i <0) throw std::invalid_argument("Rotation Matrix is 3x3");
     q_(3+i*3+j)=r;
-  }                               
+  }
 };
 
   std::ostream& operator<<(std::ostream& oss, const Transformation& t){
@@ -28,14 +28,14 @@ struct Transformation{
     return oss;
   }    
 
-struct MassMatrix{
+/* struct MassMatrix{
   Matrix<double> m_;
   MassMatrix(Matrix<double> m): m_(m){}
   MassMatrix(): m_(18,18){}
   void set(int i, int j, double r){
     m_(i,j)=r;
   }
-};
+}; */
 
 
 class RigidBody {
@@ -65,7 +65,7 @@ public:
   void setDq(Transformation t){dq_=t.q_;}
   void setDdq(Transformation t){ddq_=t.q_;}
 
-  void setMass(MassMatrix m){mass_function=std::make_shared<LinearFunction>(m.m_);}
+  void setMass(Matrix<double> m){mass_function=std::make_shared<LinearFunction>(m);}
 
   Transformation getQ(){return q_;}
   Transformation getDq(){return dq_;}
@@ -88,7 +88,7 @@ class RhsRigidBody : public NonlinearFunction
   size_t DimF() const override { return 1; }
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
   {
-    //ACHTUNG! KEINA AHNUNG OB INDEX +-1 
+    //ACHTUNG! KEINE AHNUNG OB INDEX +-1 
     VectorView<double> bview = x.Range(3,12);
     MatrixView<double> b = AsMatrix(bview,3,3);
     auto c = TransposeMatExpr(b)* b + (-1)*IdMatExpr(3);
@@ -132,3 +132,37 @@ inline double mass_matrix_data[18*18] =
 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., \
 0., 0., 0., 0.};
 
+// generates a generalized-alpha-compatible mass matrix5
+Matrix<double> mass_matrix_from_inertia(Matrix<double> inertia, Vector<double> center, double mass){
+  Matrix<double> mass_mat (18, 18); // 12 degrees of freedom plus 6 lagrange parameters for generalized alpha, see https://jschoeberl.github.io/IntroSC/ODEs/mechanical.html#systems-with-constraints
+  MatrixView<double> view (mass_mat);
+  view = 0;
+
+  // three diagonal blocks need to be written, see Schöberl's notes, 2nd meeting, page 1
+  // the (symmetrical) content of these blocks:
+  Matrix<double> diagblock (4, 4);
+  diagblock(0, 0) = mass;
+  for (size_t i=1; i < 4; i++){
+    diagblock(i, 0) = mass*center(i-1);
+    diagblock(0, i) = mass*center(i-1);
+  }
+  // notes in Norbert's Theory/Massenmatrix.xopp
+  // lower right corner (off-diagonal) :
+  for (size_t i=1; i < 4; i++){
+    for (size_t j=1; j < 4; j++){
+      if (i != j){
+        diagblock(i, j) = inertia(i-1, j-1);
+      }
+    }
+  }
+  // the diagonal of the lower right corner:
+  diagblock(0+1, 0+1) = (inertia(1, 1) + inertia(2, 2) - inertia(0, 0))/2.;
+  diagblock(1+1, 1+1) = (inertia(0, 0) + inertia(2, 2) - inertia(1, 1))/2.;
+  diagblock(2+1, 2+1) = (inertia(0, 0) + inertia(1, 1) - inertia(2, 2))/2.;
+
+  // place 3 copies of diagblock on the diagonal of mass_mat
+  for (size_t d=0; d < 12; d+=4){
+    mass_mat.Rows(d, 4).Cols(d, 4) = diagblock;
+  }
+  return mass_mat;
+}

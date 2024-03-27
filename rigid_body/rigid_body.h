@@ -9,10 +9,13 @@ class RhsRigidBody;
 using namespace ASC_bla;
 using namespace ASC_ode;
 
-struct Transformation{
+class Transformation{
+ public:
   Vector<double> q_;
-  Transformation(Vector<double> q):q_(q){};
+
+  Transformation(Vector<double> q):q_(q){}
   Transformation():q_(18){}
+
   void setTranslation(double a, double b, double c){q_(0)=a;q_(4)=b;q_(8)=c;}
   void setRotation(int i, int j, double r){
     if(i>2||j>2 || j<0 || i <0) throw std::invalid_argument("Rotation Matrix is 3x3");
@@ -26,7 +29,7 @@ struct Transformation{
                      << " \t\t" << t.q_(5) << " ," << t.q_(6) << ", "<<", " << t.q_(7) <<  std::endl
                       << "\t\t" << t.q_(9) << " ," << t.q_(10) << ", "<<", " << t.q_(11) << std::endl; 
     return oss;
-  }    
+  }
 
 /* struct MassMatrix{
   Matrix<double> m_;
@@ -104,17 +107,13 @@ class RhsRigidBody : public NonlinearFunction
   size_t DimF() const override { return 1; }
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
   {
-    //ACHTUNG! KEINE AHNUNG OB INDEX +-1 
-    // VectorView<double> bview = x.Range(3,12);
-    // MatrixView<double> b = AsMatrix(bview,3,3);
+
     Matrix<double> b (3, 3);
-    // extract b; might be made more elegant using Range and Row
-    /* b(0, 0) = x(1); b(0, 1) = x(2); b(0, 2) = x(3);
-    b(1, 0) = x(5); b(1, 1) = x(6); b(1, 2) = x(7);
-    b(2, 0) = x(9); b(2, 1) = x(10); b(2, 2) = x(11); */
+    // extract B from Q
     b.Row(0) = x.Range(1, 4);
     b.Row(1) = x.Range(5, 8);
     b.Row(2) = x.Range(9, 12);
+    // b must be orthonormal
     auto c = TransposeMatExpr(b)* b + (-1)*IdMatExpr(3);
     Vector<double> g(6);
     g(0)=c(0, 0);
@@ -157,7 +156,7 @@ inline double mass_matrix_data[18*18] =
 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., \
 0., 0., 0., 0.};
 
-// generates a generalized-alpha-compatible mass matrix5
+// generates a generalized-alpha-compatible mass matrix
 Matrix<double> mass_matrix_from_inertia(Matrix<double> inertia, Vector<double> center, double mass){
   Matrix<double> mass_mat (18, 18); // 12 degrees of freedom plus 6 lagrange parameters for generalized alpha, see https://jschoeberl.github.io/IntroSC/ODEs/mechanical.html#systems-with-constraints
   MatrixView<double> view (mass_mat);
@@ -171,6 +170,7 @@ Matrix<double> mass_matrix_from_inertia(Matrix<double> inertia, Vector<double> c
     diagblock(i, 0) = mass*center(i-1);
     diagblock(0, i) = mass*center(i-1);
   }
+  
   // notes in Norbert's Theory/Massenmatrix.xopp
   // lower right corner (off-diagonal) :
   for (size_t i=1; i < 4; i++){
@@ -180,6 +180,7 @@ Matrix<double> mass_matrix_from_inertia(Matrix<double> inertia, Vector<double> c
       }
     }
   }
+
   // the diagonal of the lower right corner:
   diagblock(0+1, 0+1) = (inertia(1, 1) + inertia(2, 2) - inertia(0, 0))/2.;
   diagblock(1+1, 1+1) = (inertia(0, 0) + inertia(2, 2) - inertia(1, 1))/2.;

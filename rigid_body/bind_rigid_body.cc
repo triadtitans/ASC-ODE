@@ -33,7 +33,6 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def("setTranslation",&Transformation::setTranslation)
       .def("setRotation",&Transformation::setRotation)
       .def("asTuple",[](Transformation& t){
-        // return py::make_tuple(t.q_(3),t.q_(4),t.q_(5),t.q_(0),t.q_(6),t.q_(7),t.q_(8),t.q_(1),t.q_(9),t.q_(10),t.q_(11),t.q_(2),0,0,0,1);
         // *column-major* transformation matrix as in https://threejs.org/docs/#api/en/math/Matrix4
         // old version: return py::make_tuple(t.q_(3),t.q_(6),t.q_(9),0,t.q_(4),t.q_(7),t.q_(10),0,t.q_(5),t.q_(8),t.q_(11),0,t.q_(0),t.q_(1),t.q_(2),1);
         // new version, converts Schöberl-style ordering of Q to column-major ordering of a three.js transformation matrix:
@@ -56,7 +55,7 @@ PYBIND11_MODULE(rigid_body, rbd) {
         std::stringstream sstr;
         sstr << mss;
         return sstr.str();
-      })*/        
+      })*/
       .def_property("q", &RigidBody::getQ,&RigidBody::setQ)
       .def_property("dq", &RigidBody::getDq,&RigidBody::setDq)
       .def_property("ddq", &RigidBody::getDdq,&RigidBody::setDdq)   

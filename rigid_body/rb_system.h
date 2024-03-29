@@ -88,7 +88,6 @@ class RhsRBSystem : public NonlinearFunction
   int numBodies() const {return _s.numBodies();}
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
   {
-    std::cout << "EVAL!"<<std::endl;
     f(0)=0;
     for(int i=0;i< numBodies(); i++){
       Matrix<double> b (3, 3);
@@ -117,12 +116,14 @@ class RhsRBSystem : public NonlinearFunction
       //Evaluate distance between connectors, and compare with beam length
       Connector c1 = b.a;
       Connector c2 = b.b;
-      RigidBody b1 = _s.bodies()[c1.num];
-      RigidBody b2 = _s.bodies()[c2.num];
-      Vec<3> pos1 = b1.absolutePosOf(c1.pos);
-      Vec<3> pos2 = b2.absolutePosOf(c2.pos);
-      double g = Norm(pos1+ ((-1)*pos2))-b.length;
-      f(0)+=g*x(numBodies()+i);
+
+      //Get the position of RigidBody 1 and 2 corresponding to state x
+      Transformation t1 (x.Range(c1.num*dim_per_body,(c1.num+1)*dim_per_body));
+      Transformation t2 (x.Range(c2.num*dim_per_body,(c2.num+1)*dim_per_body));
+      Vec<3> pos1 = t1.apply(c1.pos);
+      Vec<3> pos2 = t2.apply(c2.pos);
+      double g = Norm(pos1-pos2)-b.length;
+      f(0)+=g*x(numBodies()*dim_per_body+i);
     }
   }
   virtual void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const

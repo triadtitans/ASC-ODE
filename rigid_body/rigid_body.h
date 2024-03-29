@@ -72,7 +72,7 @@ public:
   void setDdq(Transformation t){ddq_=t.q_;}
 
   void setMass(Matrix<double> m){mass_function=std::make_shared<LinearFunction>(m);}
-
+  std::shared_ptr<NonlinearFunction> getMassFunc(){return mass_function;}
   // saves a state for the reset button
   void saveState(){
     initialq_ = q_;
@@ -95,7 +95,7 @@ public:
     std::shared_ptr<NumericDerivative> dlagrange = std::make_shared<NumericDerivative>(rhs);
    
     SolveODE_Alpha (tend, steps, 0.8, q_, dq_, ddq_, dlagrange, mass_function, callback);
-  }
+  } 
 };
 
 class RhsRigidBody : public NonlinearFunction

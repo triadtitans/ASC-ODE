@@ -59,6 +59,46 @@ namespace ASC_ode
     }
   };
 
+  class StackedFunction : public NonlinearFunction
+  {
+    std::vector<std::shared_ptr<NonlinearFunction>> _functions;
+    public:
+    StackedFunction(){};
+    void addFunction(std::shared_ptr<NonlinearFunction> func){_functions.push_back(func);}
+    size_t DimX() const override {
+      size_t sum=0;
+      for(auto ptr : _functions)
+        sum += ptr->DimX();
+      return sum;
+    }
+    size_t DimF() const override {
+      size_t sum=0;
+      for(auto ptr : _functions)
+        sum += ptr->DimF();
+      return sum;
+    }
+    void Evaluate (VectorView<double> x, VectorView<double> f) const override{
+      size_t cursor_x=0;
+      size_t cursor_f=0;
+      for(auto func : _functions){
+        func->Evaluate(x.Range(cursor_x,func->DimX()),f.Range(cursor_f,func->DimF()));
+        cursor_f+=func->DimF();
+        cursor_x+=func->DimX();
+      }
+    }
+    void EvaluateDeriv (VectorView<double> x, MatrixView<double> f) const override{
+      size_t cursor_x=0;
+      size_t cursor_f=0;
+      f=0;
+      for(auto func : _functions){
+        //The Jacobian of the stacked function is a block diagonal matrix, consisting of the individual Jacobians
+        MatrixView<double> currentBlock = f.Cols(cursor_x,func->DimX()).Rows(cursor_f,func->DimF());
+        func->EvaluateDeriv(x.Range(cursor_x,func->DimX()),currentBlock);
+        cursor_f+=func->DimF();
+        cursor_x+=func->DimX();
+      }
+    }
+  };
 
   void dNumeric(const NonlinearFunction& f, VectorView<double> x, MatrixView<double> df){
     double eps = 1e-8;

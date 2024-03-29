@@ -54,11 +54,12 @@ PYBIND11_MODULE(rigid_body, rbd) {
                           [](Connector& c, std::array<double,3> t){c.pos(0)=t[0];c.pos(1)=t[1];c.pos(2)=t[2];});
 
     py::class_<Beam>(rbd,"Beam")
+      .def(py::init<>([](Connector a, Connector b, double length){return Beam{length,a,b};}))
       .def_property_readonly("length", [](Beam& b){return b.length;})
       .def_property_readonly("connectorA", [](Beam& b){return b.a;})
       .def_property_readonly("connectorB",[](Beam& b){return b.b;});
 
-    rbd.def("Beam",[](Connector a, Connector b, double length){return Beam{length,a,b};});
+    
 
     py::class_<RigidBody> (rbd, "RigidBody")
       .def(py::init<>())
@@ -83,6 +84,9 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def("addBody",&RBSystem::addBody)
       .def("addBeam",&RBSystem::addBeam)
       .def("simulate", [](RBSystem& sys,double tend, double steps){sys.simulate(tend,steps);})
-      .def("bodies", &RBSystem::bodies);
-      
+      .def("bodies", &RBSystem::bodies)
+      .def("beams", &RBSystem::beams)
+      .def("saveState", &RBSystem::saveState)
+      .def("reset", &RBSystem::reset);
+  
 }

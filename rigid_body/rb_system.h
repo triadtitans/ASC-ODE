@@ -54,6 +54,16 @@ public:
       _bodies[i].setDq(Transformation(dx.Range(dim_per_body*i,dim_per_body*i+dim_per_body)));
     }
   }
+
+  void saveState(){
+    for(auto& r: bodies())
+      r.saveState();
+  }
+
+  void reset(){
+    for(auto& r: bodies())
+      r.reset();
+  }
   
   void simulate(double tend, double steps, std::function<void(double,VectorView<double>)> callback = nullptr ){
     //Create Lagragian

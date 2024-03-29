@@ -12,9 +12,9 @@ int main(){
   
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
   Vector<double> dq { 18 };
-  dq(0)=0.0001;
-  dq(10)=0.0002;
-  dq(7)=-0.0002;
+  dq(0)=0.0000;
+  dq(10)=0.000;
+  dq(7)=-0.000;
  
   Vector<double> ddq { 18 };
   MatrixView<double> mass_matrix(18,18,mass_matrix_data);
@@ -28,9 +28,9 @@ int main(){
   q(9)=0; q(10)=0; q(11)=1; 
   
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
-  dq(0)=0.0001;
-  dq(3)=0.0001;
-  dq(9)=-0.0001;
+  dq(0)=0.0000;
+  dq(3)=0.000;
+  dq(9)=-0.000;
  
   RigidBody rb2(mass_matrix,q,dq,ddq);
 

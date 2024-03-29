@@ -4,7 +4,7 @@ int main(){
   double tend = 2*M_PI;
   double steps = 1000;
   Vector<double> q { 18 };
-  q(0)=0; q(4)=0; q(8)=0; 
+  q(0)=0.0000; q(4)=0; q(8)=0; 
 
   q(1)=1; q(2)=0; q(3)=0; 
   q(5)=0; q(6)=1; q(7)=0; 
@@ -12,13 +12,14 @@ int main(){
   
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
   Vector<double> dq { 18 };
-  dq(0)=0.00000;
-  dq(10)=0.000;
-  dq(7)=-0.000;
+  dq(0)=0.0001;
+  dq(10)=0.0002;
+  dq(7)=-0.0002;
  
   Vector<double> ddq { 18 };
   MatrixView<double> mass_matrix(18,18,mass_matrix_data);
   RigidBody rb1(mass_matrix,q,dq,ddq);
+  q=0;dq=0;
 
   q(0)=3; q(4)=3; q(8)=3; 
 
@@ -27,9 +28,9 @@ int main(){
   q(9)=0; q(10)=0; q(11)=1; 
   
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
-  dq(4)=0.0000;
-  dq(3)=0.000;
-  dq(9)=0.000;
+  dq(0)=0.0001;
+  dq(3)=0.0001;
+  dq(9)=-0.0001;
  
   RigidBody rb2(mass_matrix,q,dq,ddq);
 

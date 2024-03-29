@@ -4,7 +4,7 @@
 #include <pybind11/stl_bind.h>
 #include <pybind11/functional.h>
 
-#include "rigid_body.h"
+#include "rb_system.h"
 
 namespace py = pybind11;
 
@@ -49,6 +49,17 @@ PYBIND11_MODULE(rigid_body, rbd) {
     // MASS_CUBE = MatrixView<double>(18, 18, mass_matrix_data);
     // rbd.attr("MASS_CUBE") = MASS_CUBE;
 
+    py::class_<Connector>(rbd,"Connector")
+      .def_property("pos",[](Connector& c){return py::make_tuple(c.pos(0),c.pos(1),c.pos(2));},
+                          [](Connector& c, std::array<double,3> t){c.pos(0)=t[0];c.pos(1)=t[1];c.pos(2)=t[2];});
+
+    py::class_<Beam>(rbd,"Beam")
+      .def_property_readonly("length", [](Beam& b){return b.length;})
+      .def_property_readonly("connectorA", [](Beam& b){return b.a;})
+      .def_property_readonly("connectorB",[](Beam& b){return b.b;});
+
+    rbd.def("Beam",[](Connector a, Connector b, double length){return Beam{length,a,b};});
+
     py::class_<RigidBody> (rbd, "RigidBody")
       .def(py::init<>())
       /*.def("__str__", [](RigidBody & rb) {
@@ -63,9 +74,15 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def("saveState", &RigidBody::saveState)
       .def("reset", &RigidBody::reset)  
       .def("simulate",[](RigidBody& r, double tend,double steps) {r.simulate(tend,steps);});
-    
-
     rbd.def("mass_matrix_from_inertia", &mass_matrix_from_inertia, "generates the a mass matrix from given inertia, center and mass",
             py::arg("inertia_matrix"), py::arg("center_of_mass"), py::arg("mass"));
-    
+
+
+    py::class_<RBSystem> (rbd, "RBSystem")
+      .def(py::init<>())
+      .def("addBody",&RBSystem::addBody)
+      .def("addBeam",&RBSystem::addBeam)
+      .def("simulate", [](RBSystem& sys,double tend, double steps){sys.simulate(tend,steps);})
+      .def("bodies", &RBSystem::bodies);
+      
 }

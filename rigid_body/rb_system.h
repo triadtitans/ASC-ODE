@@ -5,20 +5,41 @@ constexpr int dim_per_body = 18;
 
 class RhsRBSystem;
 
+enum class ConnectorType { mass };
+
+struct Connector{
+  ConnectorType t;
+  size_t num;
+  Vec<3> pos;
+};
+
+struct Beam{
+  double length;
+  Connector a;
+  Connector b;
+};
+
 class RBSystem {
   std::vector<RigidBody> _bodies;
+  std::vector<Beam> _beams;
   std::shared_ptr<StackedFunction> _mass_func;
 public:
   RBSystem(){
     _mass_func =std::make_shared<StackedFunction>();
   };
-  void addBody(RigidBody& b){
+  Connector addBody(RigidBody& b){
     _bodies.push_back(b);
     _mass_func->addFunction(b.getMassFunc());
+    return Connector{ConnectorType::mass, _bodies.size()-1, Vector<double>(3)};
+  }
+  void addBeam(Beam b){
+    _beams.push_back(b);
   }
   auto& bodies(){return _bodies;}
+  auto& beams(){return _beams;}
   int numBodies(){return _bodies.size();}
-  int dimension(){return dim_per_body*numBodies();}
+  int numBeams(){return _beams.size();}
+  int dimension(){return dim_per_body*numBodies()+_beams.size();}
 
   void GetState(VectorView<double> x, VectorView<double> dx){
     for(int i=0; i<numBodies(); i++){
@@ -35,12 +56,22 @@ public:
   }
   
   void simulate(double tend, double steps, std::function<void(double,VectorView<double>)> callback = nullptr ){
+    //Create Lagragian
     std::shared_ptr<RhsRBSystem> rhs = std::make_shared<RhsRBSystem>(*this);
+    //Derive Lagragian
     std::shared_ptr<NumericDerivative> dlagrange = std::make_shared<NumericDerivative>(rhs);
     Vector<double> state(dimension());
     Vector<double> dstate(dimension());
+
+    //Extend mass func to beam lambdas
+    Vector<double> zero(_beams.size());
+    std::shared_ptr<NonlinearFunction> const_zero = std::make_shared<ConstantFunction>(zero);
+    std::shared_ptr<StackedFunction> mass = std::make_shared<StackedFunction>();
+    mass->addFunction(_mass_func);
+    mass->addFunction(const_zero);
+
     GetState(state,dstate);
-    SolveODE_Newmark (tend, steps, state, dstate, dlagrange, _mass_func, callback);
+    SolveODE_Newmark (tend, steps, state, dstate, dlagrange, mass, callback);
     SetState(state,dstate);
     
   } 
@@ -57,6 +88,7 @@ class RhsRBSystem : public NonlinearFunction
   int numBodies() const {return _s.numBodies();}
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
   {
+    std::cout << "EVAL!"<<std::endl;
     f(0)=0;
     for(int i=0;i< numBodies(); i++){
       Matrix<double> b (3, 3);
@@ -79,6 +111,18 @@ class RhsRBSystem : public NonlinearFunction
       g(4)=c(2, 1);
       g(5)=c(2, 2);
       f(0) += q.Range(12, 18)*g;
+    }
+    for(int i=0;i<_s.numBeams();i++){
+      auto& b = _s.beams()[i];
+      //Evaluate distance between connectors, and compare with beam length
+      Connector c1 = b.a;
+      Connector c2 = b.b;
+      RigidBody b1 = _s.bodies()[c1.num];
+      RigidBody b2 = _s.bodies()[c2.num];
+      Vec<3> pos1 = b1.absolutePosOf(c1.pos);
+      Vec<3> pos2 = b2.absolutePosOf(c2.pos);
+      double g = Norm(pos1+ ((-1)*pos2))-b.length;
+      f(0)+=g*x(numBodies()+i);
     }
   }
   virtual void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const

@@ -12,31 +12,34 @@ int main(){
   
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
   Vector<double> dq { 18 };
-  dq(0)=0.00001;
-  dq(10)=0.001;
-  dq(7)=-0.001;
+  dq(0)=0.00000;
+  dq(10)=0.000;
+  dq(7)=-0.000;
  
   Vector<double> ddq { 18 };
   MatrixView<double> mass_matrix(18,18,mass_matrix_data);
   RigidBody rb1(mass_matrix,q,dq,ddq);
 
-  q(0)=0; q(4)=0; q(8)=0; 
+  q(0)=3; q(4)=3; q(8)=3; 
 
   q(1)=1; q(2)=0; q(3)=0; 
   q(5)=0; q(6)=1; q(7)=0; 
   q(9)=0; q(10)=0; q(11)=1; 
   
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
-  dq(4)=0.0001;
-  dq(3)=0.002;
-  dq(9)=-0.002;
+  dq(4)=0.0000;
+  dq(3)=0.000;
+  dq(9)=0.000;
  
   RigidBody rb2(mass_matrix,q,dq,ddq);
 
   RBSystem sys;
-  sys.addBody(rb1);
-  sys.addBody(rb2);
-
+  auto c1 = sys.addBody(rb1);
+  auto c2 = sys.addBody(rb2);
+  c1.pos = {1,1,1};
+  c2.pos = {-1,-1,-1};
+  Beam b = {Norm(rb1.absolutePosOf(c1.pos)-rb2.absolutePosOf(c2.pos)),c1,c2};
+  sys.addBeam(b);
   sys.simulate(tend,steps, [](double t, VectorView<double> q) { 
                     std::cout<<std::fixed << t << ": Translation =" << q(0) << " ," << q(4) << ", "<<", " << q(8) << "} " << std::endl
                       <<"\t"<< " Rotation: " << q(1) << " ," << q(2) << ", "<<", " << q(3) << "} " << std::endl

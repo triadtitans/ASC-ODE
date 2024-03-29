@@ -16,6 +16,12 @@ class Transformation{
   Transformation(Vector<double> q):q_(q){}
   Transformation():q_(18){}
 
+  Vec<3> apply(Vec<3> pos){
+    Vec<3> trans{q_(0),q_(4),q_(8)};
+    Matrix<double> rot = AsMatrix(q_,3,4).Cols(1,3);
+    return trans + rot*pos;
+  }
+
   void setTranslation(double a, double b, double c){q_(0)=a;q_(4)=b;q_(8)=c;}
   void setRotation(int i, int j, double r){
     if(i>2||j>2 || j<0 || i <0) throw std::invalid_argument("Rotation Matrix is 3x3");
@@ -84,6 +90,10 @@ public:
     q_ = initialq_;
     dq_ = initialdq_;
     ddq_ = initialddq_;
+  }
+
+  Vec<3> absolutePosOf(Vec<3> relative_pos){
+    return getQ().apply(relative_pos);
   }
 
   Transformation getQ(){return q_;}

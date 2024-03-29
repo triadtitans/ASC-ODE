@@ -137,11 +137,13 @@ class NumericDerivative : public NonlinearFunction
   class ConstantFunction : public NonlinearFunction
   {
     Vector<> val;
+    size_t dim_;
   public:
-    ConstantFunction (VectorView<double> _val) : val(_val) { }
+    ConstantFunction (VectorView<double> _val) : val(_val), dim_(val.Size()) { }
+    ConstantFunction (VectorView<double> _val, size_t dim) : val(_val), dim_(dim) { }
     void Set(VectorView<double> _val) { val = _val; }
     VectorView<double> Get() const { return val.View(); }
-    size_t DimX() const override { return val.Size(); }
+    size_t DimX() const override { return dim_; }
     size_t DimF() const override { return val.Size(); }
     void Evaluate (VectorView<double> x, VectorView<double> f) const override
     {

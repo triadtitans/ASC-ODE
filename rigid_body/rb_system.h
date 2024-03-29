@@ -3,6 +3,8 @@
 
 constexpr int dim_per_body = 18;
 
+class RhsRBSystem;
+
 class RBSystem {
   std::vector<RigidBody> _bodies;
   std::shared_ptr<StackedFunction> _mass_func;
@@ -20,15 +22,15 @@ public:
 
   void GetState(VectorView<double> x, VectorView<double> dx){
     for(int i=0; i<numBodies(); i++){
-      x.Range(dim_per_body*i,dim_per_body)=_bodies[i].getQ().q_;
-      dx.Range(dim_per_body*i,dim_per_body)=_bodies[i].getDq().q_;
+      x.Range(dim_per_body*i,dim_per_body*i+dim_per_body)=_bodies[i].getQ().q_;
+      dx.Range(dim_per_body*i,dim_per_body*i+dim_per_body)=_bodies[i].getDq().q_;
     }
   }
 
   void SetState(VectorView<double> x, VectorView<double> dx){
     for(int i=0; i<numBodies(); i++){
-      _bodies[i].setQ(Transformation(x.Range(dim_per_body*i,dim_per_body)));
-      _bodies[i].setDq(Transformation(dx.Range(dim_per_body*i,dim_per_body)));
+      _bodies[i].setQ(Transformation(x.Range(dim_per_body*i,dim_per_body*i+dim_per_body)));
+      _bodies[i].setDq(Transformation(dx.Range(dim_per_body*i,dim_per_body*i+dim_per_body)));
     }
   }
   
@@ -61,7 +63,7 @@ class RhsRBSystem : public NonlinearFunction
 
       //x contains state of all bodies
       //q contains state (and lambdas) of one body
-      Vector<double> q = x.Range(dim_per_body*i,dim_per_body);
+      Vector<double> q = x.Range(dim_per_body*i,dim_per_body*i+dim_per_body);
 
       // extract B from Q
       b.Row(0) = q.Range(1, 4);

@@ -81,7 +81,7 @@ namespace ASC_ode
       size_t cursor_x=0;
       size_t cursor_f=0;
       for(auto func : _functions){
-        func->Evaluate(x.Range(cursor_x,func->DimX()),f.Range(cursor_f,func->DimF()));
+        func->Evaluate(x.Range(cursor_x,cursor_x+func->DimX()),f.Range(cursor_f,cursor_f+func->DimF()));
         cursor_f+=func->DimF();
         cursor_x+=func->DimX();
       }
@@ -93,7 +93,7 @@ namespace ASC_ode
       for(auto func : _functions){
         //The Jacobian of the stacked function is a block diagonal matrix, consisting of the individual Jacobians
         MatrixView<double> currentBlock = f.Cols(cursor_x,func->DimX()).Rows(cursor_f,func->DimF());
-        func->EvaluateDeriv(x.Range(cursor_x,func->DimX()),currentBlock);
+        func->EvaluateDeriv(x.Range(cursor_x,cursor_x+func->DimX()),currentBlock);
         cursor_f+=func->DimF();
         cursor_x+=func->DimX();
       }
@@ -114,17 +114,17 @@ namespace ASC_ode
         df.Col(i) = 1/(2*eps) * (fr-fl);
       }
   }
-
+//Numeric derivative of a scalar function
 class NumericDerivative : public NonlinearFunction
 {
   std::shared_ptr<NonlinearFunction> g_;
   public:
-  size_t DimX() const override { return 18; }
-  size_t DimF() const override { return 18; }
+  size_t DimX() const override { return g_->DimX(); }
+  size_t DimF() const override { return DimX(); }
   NumericDerivative(std::shared_ptr<NonlinearFunction> g): g_(g){};
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
   {
-    Matrix<double> fmat (1, 18);
+    Matrix<double> fmat (1, DimX());
     g_->EvaluateDeriv(x, fmat);
     f = fmat.Row(0);
   }

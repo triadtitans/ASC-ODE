@@ -1,8 +1,8 @@
 add_executable (test_rigid_body rigid_body.cc)
 target_link_libraries (test_rigid_body PUBLIC)
 
-add_executable (test_rgb_system rgb_system.cc)
-target_link_libraries (test_rgb_system PUBLIC)
+add_executable (test_rb_system rb_system.cc)
+target_link_libraries (test_rb_system PUBLIC)
 
 find_package(Python 3.8 COMPONENTS Interpreter Development REQUIRED)
 

@@ -1,16 +1,28 @@
 #include <vector>
 #include "rigid_body.h"
+#include <cmath>
 
 constexpr int dim_per_body = 18;
 
 class RhsRBSystem;
 
-enum class ConnectorType { mass };
+enum class ConnectorType { mass, fix };
 
 struct Connector{
   ConnectorType t;
   size_t num;
-  Vec<3> pos;
+  Vec<3> pos={0,0,0};
+
+  Vec<3> absPos(VectorView<double> x){
+    if(t==ConnectorType::fix){
+      return pos;
+    }
+    else{
+      Transformation tr (x.Range(num*dim_per_body,(num+1)*dim_per_body));
+      Vec<3> res = tr.apply(pos);
+      return res;
+    }
+  }
 };
 
 struct Beam{
@@ -19,9 +31,18 @@ struct Beam{
   Connector b;
 };
 
+
+struct Spring{
+  double length;
+  double stiffness;
+  Connector a;
+  Connector b;
+};
+
 class RBSystem {
   std::vector<RigidBody> _bodies;
   std::vector<Beam> _beams;
+  std::vector<Spring> _springs;
   std::shared_ptr<StackedFunction> _mass_func;
 public:
   RBSystem(){
@@ -35,9 +56,19 @@ public:
   void addBeam(Beam b){
     _beams.push_back(b);
   }
+  
+  void addSpring(Spring s){
+    _springs.push_back(s);
+  }
+
+  Connector addFix(){
+    return Connector{ConnectorType::fix, 0, {0,0,0}};
+  }
   auto& bodies(){return _bodies;}
   auto& beams(){return _beams;}
+  auto& springs(){return _springs;}
   int numBodies(){return _bodies.size();}
+  int numSprings(){return _springs.size();}
   int numBeams(){return _beams.size();}
   int dimension(){return dim_per_body*numBodies()+_beams.size();}
 
@@ -47,7 +78,13 @@ public:
       dx.Range(dim_per_body*i,dim_per_body*i+dim_per_body)=_bodies[i].getDq().q_;
     }
   }
+  Vec<3> connectorPos(Connector c){
+    Vector<double> x(dimension());
+    Vector<double> dx(dimension());
+    GetState(x,dx);
+    return c.absPos(x);
 
+  }
   void SetState(VectorView<double> x, VectorView<double> dx){
     for(int i=0; i<numBodies(); i++){
       _bodies[i].setQ(Transformation(x.Range(dim_per_body*i,dim_per_body*i+dim_per_body)));
@@ -127,13 +164,21 @@ class RhsRBSystem : public NonlinearFunction
       Connector c1 = b.a;
       Connector c2 = b.b;
 
-      //Get the position of RigidBody 1 and 2 corresponding to state x
-      Transformation t1 (x.Range(c1.num*dim_per_body,(c1.num+1)*dim_per_body));
-      Transformation t2 (x.Range(c2.num*dim_per_body,(c2.num+1)*dim_per_body));
-      Vec<3> pos1 = t1.apply(c1.pos);
-      Vec<3> pos2 = t2.apply(c2.pos);
+      Vec<3> pos1 = c1.absPos(x);
+      Vec<3> pos2 = c2.absPos(x);
       double g = Norm(pos1-pos2)-b.length;
       f(0)+=g*x(numBodies()*dim_per_body+i);
+    }
+    for(int i=0;i<_s.numSprings();i++){
+      auto& s = _s.springs()[i];
+      //Evaluate distance between connectors, and compare with beam length
+      Connector c1 = s.a;
+      Connector c2 = s.b;
+
+      Vec<3> pos1 = c1.absPos(x);
+      Vec<3> pos2 = c2.absPos(x);
+      double e = (1/2.0)*s.stiffness*std::pow((Norm(pos1-pos2)-s.length),2);
+      f(0)-=e;
     }
   }
   virtual void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const

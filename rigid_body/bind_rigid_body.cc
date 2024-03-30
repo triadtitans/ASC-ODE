@@ -59,6 +59,13 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def_property_readonly("connectorA", [](Beam& b){return b.a;})
       .def_property_readonly("connectorB",[](Beam& b){return b.b;});
 
+    py::class_<Spring>(rbd,"Spring")
+      .def(py::init<>([](Connector a, Connector b, double length, double stiffness){return Spring{length,stiffness,a,b};}))
+      .def_property_readonly("length", [](Spring& b){return b.length;})
+      .def_property_readonly("stiffness", [](Spring& b){return b.length;})
+      .def_property_readonly("connectorA", [](Spring& b){return b.a;})
+      .def_property_readonly("connectorB",[](Spring& b){return b.b;});
+
     
 
     py::class_<RigidBody> (rbd, "RigidBody")
@@ -83,6 +90,8 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def(py::init<>())
       .def("addBody",&RBSystem::addBody)
       .def("addBeam",&RBSystem::addBeam)
+      .def("addSpring",&RBSystem::addSpring)
+      .def("addFix",&RBSystem::addFix)
       .def("simulate", [](RBSystem& sys,double tend, double steps){sys.simulate(tend,steps);})
       .def("bodies", &RBSystem::bodies)
       .def("beams", &RBSystem::beams)

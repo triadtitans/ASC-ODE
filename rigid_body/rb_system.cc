@@ -1,8 +1,8 @@
 #include "rb_system.h"
 
 int main(){
-  double tend = 2*M_PI;
-  double steps = 1000;
+  double tend = 2*50*M_PI;
+  double steps = 10000;
   Vector<double> q { 18 };
   q(0)=0.0000; q(4)=0; q(8)=0; 
 
@@ -12,7 +12,7 @@ int main(){
   
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
   Vector<double> dq { 18 };
-  dq(0)=0.001;
+  dq(0)=0.1;
   dq(10)=0.000;
   dq(7)=-0.000;
  
@@ -28,7 +28,7 @@ int main(){
   q(9)=0; q(10)=0; q(11)=1; 
   
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
-  dq(0)=0.0000;
+  dq(0)=0.05;
   dq(3)=0.000;
   dq(9)=-0.000;
  
@@ -43,7 +43,8 @@ int main(){
   auto t = sys.connectorPos(c1);
   //Beam b = {Norm(sys.connectorPos(c1)-sys.connectorPos(c2)),c1,c2};
   //sys.addBeam(b);
-  Spring s = {Norm(sys.connectorPos(c1)-sys.connectorPos(fix)),10,c1,fix};
+
+  Spring s = {1.7320508075688772,0.001,c1,c2};
   sys.addSpring(s);
   sys.simulate(tend,steps, [](double t, VectorView<double> q) { 
                     std::cout<<std::fixed << t << ": Translation =" << q(0) << " ," << q(4) << ", "<<", " << q(8) << "} " << std::endl

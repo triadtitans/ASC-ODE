@@ -83,8 +83,8 @@ public:
     Vector<double> dx(dimension());
     GetState(x,dx);
     return c.absPos(x);
-
   }
+  
   void SetState(VectorView<double> x, VectorView<double> dx){
     for(int i=0; i<numBodies(); i++){
       _bodies[i].setQ(Transformation(x.Range(dim_per_body*i,dim_per_body*i+dim_per_body)));
@@ -110,12 +110,14 @@ public:
     Vector<double> state(dimension());
     Vector<double> dstate(dimension());
 
-    //Extend mass func to beam lambdas
-    Vector<double> zero(_beams.size());
-    std::shared_ptr<NonlinearFunction> const_zero = std::make_shared<ConstantFunction>(zero);
     std::shared_ptr<StackedFunction> mass = std::make_shared<StackedFunction>();
     mass->addFunction(_mass_func);
-    mass->addFunction(const_zero);
+    //Extend mass func to beam lambdas
+    if(_beams.size()>0){
+      Vector<double> zero(_beams.size());
+      std::shared_ptr<NonlinearFunction> const_zero = std::make_shared<ConstantFunction>(zero);
+      mass->addFunction(const_zero);
+    }
 
     GetState(state,dstate);
     SolveODE_Newmark (tend, steps, state, dstate, dlagrange, mass, callback);

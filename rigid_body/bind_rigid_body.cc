@@ -51,7 +51,8 @@ PYBIND11_MODULE(rigid_body, rbd) {
 
     py::class_<Connector>(rbd,"Connector")
       .def_property("pos",[](Connector& c){return py::make_tuple(c.pos(0),c.pos(1),c.pos(2));},
-                          [](Connector& c, std::array<double,3> t){c.pos(0)=t[0];c.pos(1)=t[1];c.pos(2)=t[2];});
+                          [](Connector& c, std::array<double,3> t){c.pos(0)=t[0];c.pos(1)=t[1];c.pos(2)=t[2];})
+      .def_property_readonly("type",[](Connector& c){return c.t == ConnectorType::mass ? 0 : 1 ;});
 
     py::class_<Beam>(rbd,"Beam")
       .def(py::init<>([](Connector a, Connector b, double length){return Beam{length,a,b};}))
@@ -95,7 +96,9 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def("simulate", [](RBSystem& sys,double tend, double steps){sys.simulate(tend,steps);})
       .def("bodies", &RBSystem::bodies)
       .def("beams", &RBSystem::beams)
+      .def("springs", &RBSystem::springs)
       .def("saveState", &RBSystem::saveState)
-      .def("reset", &RBSystem::reset);
+      .def("reset", &RBSystem::reset)
+      .def("connectorPos", [](RBSystem &r, Connector c){ auto v= r.connectorPos(c); return py::make_tuple(v(0),v(1),v(2));});
   
 }

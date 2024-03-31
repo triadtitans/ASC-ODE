@@ -43,7 +43,7 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def(py::init<>())
       .def("set",&MassMatrix::set); */
 
-    // rbd.def("mass_cube",[](){return MassMatrix(MatrixView<double>(18,18,mass_matrix_data));});
+    rbd.def("gravity_cube",[](){return gravity_cube_data;});
 
     // Matrix<double> MASS_CUBE (18, 18);
     // MASS_CUBE = MatrixView<double>(18, 18, mass_matrix_data);
@@ -78,7 +78,16 @@ PYBIND11_MODULE(rigid_body, rbd) {
       })*/
       .def_property("q", &RigidBody::getQ,&RigidBody::setQ)
       .def_property("dq", &RigidBody::getDq,&RigidBody::setDq)
-      .def_property("ddq", &RigidBody::getDdq,&RigidBody::setDdq)   
+      .def_property("ddq", &RigidBody::getDdq,&RigidBody::setDdq)
+      .def_property("gravity",
+        [](RigidBody& r){
+          std::array<double,18> t;
+          for (int i = 0;i<18;i++) t[i]=r.gravity()(i);
+          return t;
+        },
+        [](RigidBody& r, std::array<double,18> t){
+          for (int i = 0;i<18;i++) r.gravity()(i)=t[i];
+        })
       .def("setMass", &RigidBody::setMass)
       .def("saveState", &RigidBody::saveState)
       .def("reset", &RigidBody::reset)  

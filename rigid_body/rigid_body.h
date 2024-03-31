@@ -54,25 +54,29 @@ class RigidBody {
   Vector<double> initialq_;
   Vector<double> initialdq_;
   Vector<double> initialddq_;
+  Vector<double> gravity_;
   int dim_;
   std::shared_ptr<LinearFunction> mass_function;
 public:
   template <typename T>
-  RigidBody(MatrixExpr<T>& m,Vector<double> q,Vector<double> dq,Vector<double> ddq)
+  RigidBody(MatrixExpr<T>& m,Vector<double> q,Vector<double> dq,Vector<double> ddq,Vector<double> gravity)
         : dim_(m.Height()), mass_function(std::make_shared<LinearFunction>(m)),
-          q_(q),dq_(dq),ddq_(ddq), initialq_(q),initialdq_(dq),initialddq_(ddq){
+          q_(q),dq_(dq),ddq_(ddq), initialq_(q),initialdq_(dq),initialddq_(ddq),gravity_(gravity){
     if(m.Width() != dim_) throw std::invalid_argument("Mass matrix must be square");
     if(q.Size() != dim_) throw std::invalid_argument("q Vector must match mass matrix");
     if(dq.Size() != dim_) throw std::invalid_argument("q Vector must match mass matrix");
     if(ddq.Size() != dim_) throw std::invalid_argument("q Vector must match mass matrix");
+    if(ddq.Size() != dim_) throw std::invalid_argument("q Vector must match mass matrix");
+    if(gravity.Size() != dim_) throw std::invalid_argument("gravity Vector must match dimension");
   }
 
   RigidBody()
         :  dim_(18), mass_function(std::make_shared<LinearFunction>(Matrix(18,18))),
-          q_(18),dq_(18),ddq_(18), initialq_(18),initialdq_(18),initialddq_(18){
+          q_(18),dq_(18),ddq_(18), initialq_(18),initialdq_(18),initialddq_(18),gravity_(18){
     q_(1)=1;q_(6)=1;q_(11)=1;
   }
 
+  Vector<double>& gravity(){return gravity_;}
   void setQ(Transformation t){q_=t.q_;}
   void setDq(Transformation t){dq_=t.q_;}
   void setDdq(Transformation t){ddq_=t.q_;}
@@ -162,6 +166,8 @@ inline double mass_matrix_data[18*18] ={
 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, \
 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 };
+
+inline std::array<double,18> gravity_cube_data = {0,0,0,0,1,0.5,0.5,0.5,0,0,0,0,0,0,0,0,0,0};
 
 // generates a generalized-alpha-compatible mass matrix
 Matrix<double> mass_matrix_from_inertia(Matrix<double> inertia, Vector<double> center, double mass){

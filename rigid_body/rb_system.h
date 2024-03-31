@@ -130,7 +130,6 @@ class RhsRBSystem : public NonlinearFunction
 {
   RBSystem& _s;
   public:
-  //Just a reminder
   RhsRBSystem(RBSystem& s):_s(s){};
   size_t DimX() const override { return _s.dimension(); }
   size_t DimF() const override { return 1; }
@@ -145,6 +144,8 @@ class RhsRBSystem : public NonlinearFunction
       //q contains state (and lambdas) of one body
       Vector<double> q = x.Range(dim_per_body*i,dim_per_body*i+dim_per_body);
 
+
+   
       // extract B from Q
       b.Row(0) = q.Range(1, 4);
       b.Row(1) = q.Range(5, 8);
@@ -159,6 +160,9 @@ class RhsRBSystem : public NonlinearFunction
       g(4)=c(2, 1);
       g(5)=c(2, 2);
       f(0) += q.Range(12, 18)*g;
+
+      //Calculate gravitational potential
+      f(0) -= 0.0001* ((_s.bodies()[i].gravity())*q); 
     }
     for(int i=0;i<_s.numBeams();i++){
       auto& b = _s.beams()[i];

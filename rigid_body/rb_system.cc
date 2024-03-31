@@ -1,6 +1,8 @@
 #include "rb_system.h"
 
 int main(){
+
+
   double tend = 2*50*M_PI;
   double steps = 10000;
   Vector<double> q { 18 };
@@ -18,7 +20,8 @@ int main(){
  
   Vector<double> ddq { 18 };
   MatrixView<double> mass_matrix(18,18,mass_matrix_data);
-  RigidBody rb1(mass_matrix,q,dq,ddq);
+  VectorView<double> gravity_vector(18,gravity_cube_data.data());
+  RigidBody rb1(mass_matrix,q,dq,ddq,gravity_vector);
   q=0;dq=0;
 
   q(0)=3; q(4)=3; q(8)=3; 
@@ -32,7 +35,7 @@ int main(){
   dq(3)=0.000;
   dq(9)=-0.000;
  
-  RigidBody rb2(mass_matrix,q,dq,ddq);
+  RigidBody rb2(mass_matrix,q,dq,ddq,gravity_vector);
 
   RBSystem sys;
   auto c1 = sys.addBody(rb1);
@@ -44,8 +47,8 @@ int main(){
   //Beam b = {Norm(sys.connectorPos(c1)-sys.connectorPos(c2)),c1,c2};
   //sys.addBeam(b);
 
-  Spring s = {1.7320508075688772,0.001,c1,c2};
-  sys.addSpring(s);
+  //Spring s = {1.7320508075688772,0.001,c1,c2};
+  //sys.addSpring(s);
   sys.simulate(tend,steps, [](double t, VectorView<double> q) { 
                     std::cout<<std::fixed << t << ": Translation =" << q(0) << " ," << q(4) << ", "<<", " << q(8) << "} " << std::endl
                       <<"\t"<< " Rotation: " << q(1) << " ," << q(2) << ", "<<", " << q(3) << "} " << std::endl

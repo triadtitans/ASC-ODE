@@ -43,8 +43,6 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def(py::init<>())
       .def("set",&MassMatrix::set); */
 
-    rbd.def("gravity_cube",[](){return gravity_cube_data;});
-
     // Matrix<double> MASS_CUBE (18, 18);
     // MASS_CUBE = MatrixView<double>(18, 18, mass_matrix_data);
     // rbd.attr("MASS_CUBE") = MASS_CUBE;
@@ -79,16 +77,31 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def_property("q", &RigidBody::getQ,&RigidBody::setQ)
       .def_property("dq", &RigidBody::getDq,&RigidBody::setDq)
       .def_property("ddq", &RigidBody::getDdq,&RigidBody::setDdq)
-      .def_property("gravity",
+      .def_property("center",
         [](RigidBody& r){
-          std::array<double,18> t;
-          for (int i = 0;i<18;i++) t[i]=r.gravity()(i);
+          std::array<double,3> t;
+          for (int i = 0;i<3;i++) t[i]=r.center()(i);
           return t;
         },
-        [](RigidBody& r, std::array<double,18> t){
-          for (int i = 0;i<18;i++) r.gravity()(i)=t[i];
+        [](RigidBody& r, std::array<double,3> t){
+          for (int i = 0;i<3;i++) r.center()(i)=t[i];
         })
-      .def("setMass", &RigidBody::setMass)
+      .def_property("mass",
+        [](RigidBody& r){
+          return r.mass();
+        },
+        [](RigidBody& r, double m){
+          r.mass()=m;
+      })
+      .def_property("inertia",
+        [](RigidBody& r){
+          return r.inertia();
+        },
+        [](RigidBody& r, Matrix<double> m){
+          r.inertia()=m;
+      })
+      //.def("setMass", &RigidBody::setMass)
+      .def("recalcMassMatrix", &RigidBody::recalcMassMatrix)
       .def("saveState", &RigidBody::saveState)
       .def("reset", &RigidBody::reset)  
       .def("simulate",[](RigidBody& r, double tend,double steps) {r.simulate(tend,steps);});
@@ -104,6 +117,15 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def("addFix",&RBSystem::addFix)
       .def("simulate", [](RBSystem& sys,double tend, double steps){sys.simulate(tend,steps);})
       .def("bodies", &RBSystem::bodies)
+      .def_property("gravity",
+        [](RBSystem& r){
+          std::array<double,3> t;
+          for (int i = 0;i<3;i++) t[i]=r.gravity()(i);
+          return t;
+        },
+        [](RBSystem& r, std::array<double,3> t){
+          for (int i = 0;i<3;i++) r.gravity()(i)=t[i];
+        })
       .def("beams", &RBSystem::beams)
       .def("springs", &RBSystem::springs)
       .def("saveState", &RBSystem::saveState)

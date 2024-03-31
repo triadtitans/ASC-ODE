@@ -4,6 +4,8 @@
 #include <vector.h>
 #include <ode.h>
 
+constexpr int dim_per_body = 18;
+
 class RhsRigidBody;
 
 using namespace ASC_bla;
@@ -47,6 +49,44 @@ class Transformation{
 }; */
 
 
+// generates a generalized-alpha-compatible mass matrix
+Matrix<double> mass_matrix_from_inertia(Matrix<double> inertia, Vector<double> center, double mass){
+  Matrix<double> mass_mat (18, 18); // 12 degrees of freedom plus 6 lagrange parameters for generalized alpha, see https://jschoeberl.github.io/IntroSC/ODEs/mechanical.html#systems-with-constraints
+  MatrixView<double> view (mass_mat);
+  view = 0;
+
+  // three diagonal blocks need to be written, see Schöberl's notes, 2nd meeting, page 1
+  // the (symmetrical) content of these blocks:
+  Matrix<double> diagblock (4, 4);
+  diagblock(0, 0) = mass;
+  for (size_t i=1; i < 4; i++){
+    diagblock(i, 0) = mass*center(i-1);
+    diagblock(0, i) = mass*center(i-1);
+  }
+  
+  // notes in Norbert's Theory/Massenmatrix.xopp
+  // lower right corner (off-diagonal) :
+  for (size_t i=1; i < 4; i++){
+    for (size_t j=1; j < 4; j++){
+      if (i != j){
+        diagblock(i, j) = inertia(i-1, j-1);
+      }
+    }
+  }
+
+  // the diagonal of the lower right corner:
+  diagblock(0+1, 0+1) = (inertia(1, 1) + inertia(2, 2) - inertia(0, 0))/2.;
+  diagblock(1+1, 1+1) = (inertia(0, 0) + inertia(2, 2) - inertia(1, 1))/2.;
+  diagblock(2+1, 2+1) = (inertia(0, 0) + inertia(1, 1) - inertia(2, 2))/2.;
+
+  // place 3 copies of diagblock on the diagonal of mass_mat
+  for (size_t d=0; d < 12; d+=4){
+    mass_mat.Rows(d, 4).Cols(d, 4) = diagblock;
+  }
+  return mass_mat;
+}
+
+
 class RigidBody {
   Vector<double> q_;
   Vector<double> dq_;
@@ -54,29 +94,43 @@ class RigidBody {
   Vector<double> initialq_;
   Vector<double> initialdq_;
   Vector<double> initialddq_;
-  Vector<double> gravity_;
-  int dim_;
+  Vec<3> center_of_mass_;
+  Matrix<double> inertia_;
+  double mass_=1;
   std::shared_ptr<LinearFunction> mass_function;
 public:
   template <typename T>
-  RigidBody(MatrixExpr<T>& m,Vector<double> q,Vector<double> dq,Vector<double> ddq,Vector<double> gravity)
+  /*RigidBody(MatrixExpr<T>& m,Vector<double> q,Vector<double> dq,Vector<double> ddq,Vec<3> center_of_mass_,double mass=1)
         : dim_(m.Height()), mass_function(std::make_shared<LinearFunction>(m)),
-          q_(q),dq_(dq),ddq_(ddq), initialq_(q),initialdq_(dq),initialddq_(ddq),gravity_(gravity){
+          q_(q),dq_(dq),ddq_(ddq), initialq_(q),initialdq_(dq),initialddq_(ddq),center_of_mass_(center_of_mass_),mass_(mass){
     if(m.Width() != dim_) throw std::invalid_argument("Mass matrix must be square");
     if(q.Size() != dim_) throw std::invalid_argument("q Vector must match mass matrix");
     if(dq.Size() != dim_) throw std::invalid_argument("q Vector must match mass matrix");
     if(ddq.Size() != dim_) throw std::invalid_argument("q Vector must match mass matrix");
     if(ddq.Size() != dim_) throw std::invalid_argument("q Vector must match mass matrix");
-    if(gravity.Size() != dim_) throw std::invalid_argument("gravity Vector must match dimension");
+  }*/
+
+  RigidBody(Vector<double> q,Vector<double> dq,Vector<double> ddq,double mass, Vec<3> center_of_mass,MatrixExpr<T>& inertia)
+        :  mass_function(std::make_shared<LinearFunction>(mass_matrix_from_inertia(inertia,center_of_mass,mass))),
+          q_(q),dq_(dq),ddq_(ddq), initialq_(q),initialdq_(dq),initialddq_(ddq),center_of_mass_(center_of_mass_),mass_(mass),inertia_(inertia){
+    if(inertia.Width() != 3) throw std::invalid_argument("Inertia matrix must be 3x3");
+    if(inertia.Height() != 3) throw std::invalid_argument("Inertia matrix must be 3x3");
+    if(q.Size() != dim_per_body) throw std::invalid_argument("q Vector must match mass matrix");
+    if(dq.Size() != dim_per_body) throw std::invalid_argument("q Vector must match mass matrix");
+    if(ddq.Size() != dim_per_body) throw std::invalid_argument("q Vector must match mass matrix");
+    if(ddq.Size() != dim_per_body) throw std::invalid_argument("q Vector must match mass matrix");
   }
 
   RigidBody()
-        :  dim_(18), mass_function(std::make_shared<LinearFunction>(Matrix(18,18))),
-          q_(18),dq_(18),ddq_(18), initialq_(18),initialdq_(18),initialddq_(18),gravity_(18){
+        :   mass_function(std::make_shared<LinearFunction>(Matrix(18,18))),
+          q_(18),dq_(18),ddq_(18), initialq_(18),initialdq_(18),initialddq_(18),inertia_(3,3),center_of_mass_{0,0,0}{
     q_(1)=1;q_(6)=1;q_(11)=1;
   }
 
-  Vector<double>& gravity(){return gravity_;}
+  double& mass(){return mass_;}
+  Vec<3>& center(){return center_of_mass_;}
+  Matrix<double>& inertia(){return inertia_;}
+  void recalcMassMatrix(){mass_function=std::make_shared<LinearFunction>(mass_matrix_from_inertia(inertia_,center_of_mass_,mass_));}
   void setQ(Transformation t){q_=t.q_;}
   void setDq(Transformation t){dq_=t.q_;}
   void setDdq(Transformation t){ddq_=t.q_;}
@@ -167,41 +221,9 @@ inline double mass_matrix_data[18*18] ={
 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 };
 
-inline std::array<double,18> gravity_cube_data = {0,0,0,0,1,0.5,0.5,0.5,0,0,0,0,0,0,0,0,0,0};
+inline double inertia_matrix_data[3*3] ={
+0.08333, 0.0, 0.0, \
+ 0.0, 0.08333, 0.0,\
+ 0.0, 0.0, 0.08333, \
+};
 
-// generates a generalized-alpha-compatible mass matrix
-Matrix<double> mass_matrix_from_inertia(Matrix<double> inertia, Vector<double> center, double mass){
-  Matrix<double> mass_mat (18, 18); // 12 degrees of freedom plus 6 lagrange parameters for generalized alpha, see https://jschoeberl.github.io/IntroSC/ODEs/mechanical.html#systems-with-constraints
-  MatrixView<double> view (mass_mat);
-  view = 0;
-
-  // three diagonal blocks need to be written, see Schöberl's notes, 2nd meeting, page 1
-  // the (symmetrical) content of these blocks:
-  Matrix<double> diagblock (4, 4);
-  diagblock(0, 0) = mass;
-  for (size_t i=1; i < 4; i++){
-    diagblock(i, 0) = mass*center(i-1);
-    diagblock(0, i) = mass*center(i-1);
-  }
-  
-  // notes in Norbert's Theory/Massenmatrix.xopp
-  // lower right corner (off-diagonal) :
-  for (size_t i=1; i < 4; i++){
-    for (size_t j=1; j < 4; j++){
-      if (i != j){
-        diagblock(i, j) = inertia(i-1, j-1);
-      }
-    }
-  }
-
-  // the diagonal of the lower right corner:
-  diagblock(0+1, 0+1) = (inertia(1, 1) + inertia(2, 2) - inertia(0, 0))/2.;
-  diagblock(1+1, 1+1) = (inertia(0, 0) + inertia(2, 2) - inertia(1, 1))/2.;
-  diagblock(2+1, 2+1) = (inertia(0, 0) + inertia(1, 1) - inertia(2, 2))/2.;
-
-  // place 3 copies of diagblock on the diagonal of mass_mat
-  for (size_t d=0; d < 12; d+=4){
-    mass_mat.Rows(d, 4).Cols(d, 4) = diagblock;
-  }
-  return mass_mat;
-}

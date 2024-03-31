@@ -19,9 +19,8 @@ int main(){
   dq(7)=-0.000;
  
   Vector<double> ddq { 18 };
-  MatrixView<double> mass_matrix(18,18,mass_matrix_data);
-  VectorView<double> gravity_vector(18,gravity_cube_data.data());
-  RigidBody rb1(mass_matrix,q,dq,ddq,gravity_vector);
+  MatrixView<double> inertia_matrix(3,3,inertia_matrix_data);
+  RigidBody rb1(q,dq,ddq,1,Vec<3>{0,0,0},inertia_matrix);
   q=0;dq=0;
 
   q(0)=3; q(4)=3; q(8)=3; 
@@ -35,9 +34,10 @@ int main(){
   dq(3)=0.000;
   dq(9)=-0.000;
  
-  RigidBody rb2(mass_matrix,q,dq,ddq,gravity_vector);
+  RigidBody rb2(q,dq,ddq,1,Vec<3>{0,0,0},inertia_matrix);
 
   RBSystem sys;
+  sys.gravity() = Vec<3>{0,0,9.8};
   auto c1 = sys.addBody(rb1);
   auto c2 = sys.addBody(rb2);
   c1.pos = {1,1,1};

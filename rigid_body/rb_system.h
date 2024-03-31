@@ -2,7 +2,6 @@
 #include "rigid_body.h"
 #include <cmath>
 
-constexpr int dim_per_body = 18;
 
 class RhsRBSystem;
 
@@ -41,6 +40,7 @@ struct Spring{
 
 class RBSystem {
   std::vector<RigidBody> _bodies;
+  Vec<3> _gravity;
   std::vector<Beam> _beams;
   std::vector<Spring> _springs;
   std::shared_ptr<StackedFunction> _mass_func;
@@ -65,6 +65,7 @@ public:
     return Connector{ConnectorType::fix, 0, {0,0,0}};
   }
   auto& bodies(){return _bodies;}
+  auto& gravity(){return _gravity;}
   auto& beams(){return _beams;}
   auto& springs(){return _springs;}
   int numBodies(){return _bodies.size();}
@@ -162,7 +163,9 @@ class RhsRBSystem : public NonlinearFunction
       f(0) += q.Range(12, 18)*g;
 
       //Calculate gravitational potential
-      f(0) -=  ((_s.bodies()[i].gravity())*q); 
+      auto t = Transformation(q);
+      f(0) -=  _s.bodies()[i].mass()*t.apply(_s.bodies()[i].center())*_s.gravity(); 
+
     }
     for(int i=0;i<_s.numBeams();i++){
       auto& b = _s.beams()[i];

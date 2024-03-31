@@ -101,7 +101,7 @@ namespace ASC_ode
   };
 
   void dNumeric(const NonlinearFunction& f, VectorView<double> x, MatrixView<double> df){
-    double eps = 1e-8;
+    double eps = 1e-3;
     Vector<> xl(f.DimX()), xr(f.DimX()), fl(f.DimF()), fr(f.DimF());
     for (size_t i = 0; i < f.DimX(); i++)
       {

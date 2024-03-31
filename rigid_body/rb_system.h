@@ -162,7 +162,7 @@ class RhsRBSystem : public NonlinearFunction
       f(0) += q.Range(12, 18)*g;
 
       //Calculate gravitational potential
-      f(0) -= 0.0001* ((_s.bodies()[i].gravity())*q); 
+      f(0) -=  ((_s.bodies()[i].gravity())*q); 
     }
     for(int i=0;i<_s.numBeams();i++){
       auto& b = _s.beams()[i];

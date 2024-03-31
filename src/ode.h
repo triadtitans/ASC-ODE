@@ -133,7 +133,7 @@ namespace ASC_ode
     auto vnew = vold + dt*((1-gamma)*aold+gamma*anew);
     auto xnew = xold + dt*vold + dt*dt/2 * ((1-2*beta)*aold+2*beta*anew);    
 
-    auto equ = Compose(mass, anew) - Compose(rhs, xnew);
+    auto equ = 2*Compose(mass, anew) - Compose(rhs, xnew);
 
     double t = 0;
     for (int i = 0; i < steps; i++)            

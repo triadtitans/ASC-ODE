@@ -3,8 +3,8 @@
 int main(){
 
 
-  double tend = 2*50*M_PI;
-  double steps = 10000;
+  double tend = 3;
+  double steps = 1000;
   Vector<double> q { 18 };
   q(0)=0.0000; q(4)=0; q(8)=0; 
 
@@ -47,8 +47,8 @@ int main(){
   //Beam b = {Norm(sys.connectorPos(c1)-sys.connectorPos(c2)),c1,c2};
   //sys.addBeam(b);
 
-  //Spring s = {1.7320508075688772,0.001,c1,c2};
-  //sys.addSpring(s);
+  Spring s = {1.7320508075688772,0.1,c1,c2};
+  sys.addSpring(s);
   sys.simulate(tend,steps, [](double t, VectorView<double> q) { 
                     std::cout<<std::fixed << t << ": Translation =" << q(0) << " ," << q(4) << ", "<<", " << q(8) << "} " << std::endl
                       <<"\t"<< " Rotation: " << q(1) << " ," << q(2) << ", "<<", " << q(3) << "} " << std::endl

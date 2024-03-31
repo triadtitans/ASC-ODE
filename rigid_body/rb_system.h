@@ -40,7 +40,7 @@ struct Spring{
 
 class RBSystem {
   std::vector<RigidBody> _bodies;
-  Vec<3> _gravity;
+  Vec<3> _gravity={0,0,0};
   std::vector<Beam> _beams;
   std::vector<Spring> _springs;
   std::shared_ptr<StackedFunction> _mass_func;

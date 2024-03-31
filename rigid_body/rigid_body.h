@@ -94,7 +94,7 @@ class RigidBody {
   Vector<double> initialq_;
   Vector<double> initialdq_;
   Vector<double> initialddq_;
-  Vec<3> center_of_mass_;
+  Vec<3> center_of_mass_={0,0,0};
   Matrix<double> inertia_;
   double mass_=1;
   std::shared_ptr<LinearFunction> mass_function;
@@ -112,7 +112,7 @@ public:
 
   RigidBody(Vector<double> q,Vector<double> dq,Vector<double> ddq,double mass, Vec<3> center_of_mass,MatrixExpr<T>& inertia)
         :  mass_function(std::make_shared<LinearFunction>(mass_matrix_from_inertia(inertia,center_of_mass,mass))),
-          q_(q),dq_(dq),ddq_(ddq), initialq_(q),initialdq_(dq),initialddq_(ddq),center_of_mass_(center_of_mass_),mass_(mass),inertia_(inertia){
+          q_(q),dq_(dq),ddq_(ddq), initialq_(q),initialdq_(dq),initialddq_(ddq),center_of_mass_(center_of_mass),mass_(mass),inertia_(inertia){
     if(inertia.Width() != 3) throw std::invalid_argument("Inertia matrix must be 3x3");
     if(inertia.Height() != 3) throw std::invalid_argument("Inertia matrix must be 3x3");
     if(q.Size() != dim_per_body) throw std::invalid_argument("q Vector must match mass matrix");

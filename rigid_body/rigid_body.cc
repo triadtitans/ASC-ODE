@@ -19,9 +19,8 @@ int main()
   dq(7)=-0.001;
  
   Vector<double> ddq { 18 };
-  MatrixView<double> mass_matrix(18,18,mass_matrix_data);
-  RigidBody rb(mass_matrix,q,dq,ddq);
-
+  MatrixView<double> inertia_matrix(3,3,inertia_matrix_data);
+  RigidBody rb(q,dq,ddq,1,Vec<3>{0,0,0},inertia_matrix);
   std::cout << "listmass_matrix:={";
   rb.simulate(tend,steps, [](double t, VectorView<double> q) { 
                     std::cout<<std::fixed << t << ": Translation =" << q(0) << " ," << q(4) << ", "<<", " << q(8) << "} " << std::endl

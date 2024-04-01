@@ -142,7 +142,8 @@ public:
   Matrix<double>& inertia(){return inertia_;}
   void recalcMassMatrix(){
     mass_function = nullptr;
-    auto diag_function=std::make_shared<LinearFunction>(diagonal_block_from_inertia(inertia_,center_of_mass_,mass_));
+    //Times 2 because of derivative of x * Ax in x is Ax + A(T)x
+    auto diag_function=std::make_shared<LinearFunction>(2*diagonal_block_from_inertia(inertia_,center_of_mass_,mass_));
     auto block_func =std::make_shared<BlockFunction>(diag_function,3);
     auto mass = std::make_shared<StackedFunction>();
     mass->addFunction(block_func);

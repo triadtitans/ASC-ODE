@@ -319,7 +319,7 @@ class NumericDerivative : public NonlinearFunction
     std::shared_ptr<NonlinearFunction> func;
     size_t s;
   public:
-    BlockFunction (size_t s, size_t n) : s(s) { }
+    BlockFunction (std::shared_ptr<NonlinearFunction> f, size_t s) : s(s), func(f) { }
 
     size_t DimX() const override { return s*func->DimX(); }
     size_t DimF() const override { return s*func->DimF(); }

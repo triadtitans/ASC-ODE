@@ -496,6 +496,7 @@ namespace ASC_ode
     inline AutoDiffDiff<D, SCAL> pow (AutoDiffDiff<D, SCAL> x, SCAL y)
     {
         AutoDiffDiff<D, SCAL> y_diff(y);
+        
         return pow(x, y_diff);
     }
 

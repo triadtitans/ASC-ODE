@@ -105,7 +105,7 @@ int main()
     RhsRigidBody body;
 
     Vector<double> x(18);
-    x = 1;
+    x = 0;
     Vector<double> df(18);
     Vector<double> df1(18);
     Matrix<double> ddf(18, 18);

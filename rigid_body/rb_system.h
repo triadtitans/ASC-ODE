@@ -200,7 +200,7 @@ class RhsRBSystem : public NonlinearFunction
       for (size_t j = 0; j < dim_per_body; j++) {
         
         x_diff(dim_per_body*l + j).Value() = x(dim_per_body*l + j);
-        x_diff(j).DValue(j) = 1;
+        x_diff(dim_per_body*k + j).DValue(j) = 1;
 
         x_diff(dim_per_body*k + j).Value() = x(dim_per_body*k + j);
         x_diff(dim_per_body*k + j).DValue(dim_per_body + j) = 1;
@@ -236,7 +236,7 @@ class RhsRBSystem : public NonlinearFunction
       for (size_t j = 0; j < dim_per_body; j++) {
         
         x_diff(dim_per_body*l + j).Value() = x(dim_per_body*l + j);
-        x_diff(j).DValue(j) = 1;
+        x_diff(dim_per_body*l + j).DValue(j) = 1;
 
         x_diff(dim_per_body*k + j).Value() = x(dim_per_body*k + j);
         x_diff(dim_per_body*k + j).DValue(dim_per_body + j) = 1;
@@ -245,7 +245,8 @@ class RhsRBSystem : public NonlinearFunction
 
       Vec<3, AutoDiffDiff<2*dim_per_body, double>> pos1 = c1.absPos(x_diff);
       Vec<3, AutoDiffDiff<2*dim_per_body, double>> pos2 = c2.absPos(x_diff);
-      AutoDiffDiff<2*dim_per_body, double> e_diff = (1/2.0)*s.stiffness*pow((Norm(pos1-pos2)-s.length), 2.);
+      AutoDiffDiff<2*dim_per_body, double> norm = Norm(pos1-pos2)-s.length;
+      AutoDiffDiff<2*dim_per_body, double> e_diff = (1/2.0)*s.stiffness*(norm * norm);
       
       for (size_t j = 0; j < dim_per_body; j++) {
         f(dim_per_body*l + j) += e_diff.DValue(j);
@@ -319,7 +320,7 @@ class RhsRBSystem : public NonlinearFunction
       for (size_t j = 0; j < dim_per_body; j++) {
         
         x_diff(dim_per_body*l + j).Value() = x(dim_per_body*l + j);
-        x_diff(j).DValue(j) = 1;
+        x_diff(dim_per_body*l + j).DValue(j) = 1;
 
         x_diff(dim_per_body*k + j).Value() = x(dim_per_body*k + j);
         x_diff(dim_per_body*k + j).DValue(dim_per_body + j) = 1;
@@ -366,7 +367,7 @@ class RhsRBSystem : public NonlinearFunction
       for (size_t j = 0; j < dim_per_body; j++) {
         
         x_diff(dim_per_body*l + j).Value() = x(dim_per_body*l + j);
-        x_diff(j).DValue(j) = 1;
+        x_diff(dim_per_body*l + j).DValue(j) = 1;
 
         x_diff(dim_per_body*k + j).Value() = x(dim_per_body*k + j);
         x_diff(dim_per_body*k + j).DValue(dim_per_body + j) = 1;
@@ -375,7 +376,8 @@ class RhsRBSystem : public NonlinearFunction
 
       Vec<3, AutoDiffDiff<2*dim_per_body, double>> pos1 = c1.absPos(x_diff);
       Vec<3, AutoDiffDiff<2*dim_per_body, double>> pos2 = c2.absPos(x_diff);
-      AutoDiffDiff<2*dim_per_body, double> f_diff = (1/2.0)*s.stiffness*pow((Norm(pos1-pos2)-s.length),2.);
+      AutoDiffDiff<2*dim_per_body, double> norm = Norm(pos1-pos2)-s.length;
+      AutoDiffDiff<2*dim_per_body, double> f_diff = (1/2.0)*s.stiffness*(norm * norm);
       
       for (size_t j = 0; j < dim_per_body; j++) {
         for (size_t h = 0; h < dim_per_body; h++) {

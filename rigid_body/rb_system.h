@@ -136,7 +136,7 @@ class RhsRBSystem : public NonlinearFunction
   public:
   RhsRBSystem(RBSystem& s):_s(s){};
   size_t DimX() const  { return _s.dimension();}
-  size_t DimF() const  { return 1; }
+  size_t DimF() const  { return _s.dimension(); }
   int numBodies() const {return _s.numBodies();}
 
   void Evaluate (VectorView<double> x, VectorView<double> f) const 
@@ -259,6 +259,8 @@ class RhsRBSystem : public NonlinearFunction
   
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const
   {
+    //dNumeric(*this,x,df);
+    
     // our function is 2-times 
     df = 0;
     for(int i=0;i< numBodies(); i++){

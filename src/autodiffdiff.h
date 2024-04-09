@@ -11,8 +11,8 @@ namespace ASC_ode
     class AutoDiffDiff
     {
         SCAL val;
-        SCAL dval[D?D:1];
-        SCAL ddval[D?D*D:1];
+        SCAL dval[D?D:1] ={0};
+        SCAL ddval[D?D*D:1]={0};
     public:
 
         typedef AutoDiffDiff<D, SCAL> TELEM;

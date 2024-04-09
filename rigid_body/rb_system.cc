@@ -4,8 +4,8 @@
 int main(){
 
 
-  double tend = 3;
-  double steps = 1000;
+  double tend = 100;
+  double steps = 10000;
   Vector<double> q { 18 };
   q(0)=0.0000; q(4)=0; q(8)=0; 
 
@@ -15,7 +15,7 @@ int main(){
   
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
   Vector<double> dq { 18 };
-  dq(0)=0.1;
+  dq(0)=0.0;
   dq(10)=0.000;
   dq(7)=-0.000;
  
@@ -31,14 +31,14 @@ int main(){
   q(9)=0; q(10)=0; q(11)=1; 
   
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
-  dq(0)=0.05;
+  dq(0)=0.00;
   dq(3)=0.000;
   dq(9)=-0.000;
  
   RigidBody rb2(q,dq,ddq,1,Vec<3>{0,0,0},inertia_matrix);
 
   RBSystem sys;
-  sys.gravity() = Vec<3>{0,0,9.8};
+  //sys.gravity() = Vec<3>{0,0,9.8};
   auto c1 = sys.addBody(rb1);
   auto c2 = sys.addBody(rb2);
   c1.pos = {1,1,1};
@@ -48,7 +48,7 @@ int main(){
   //Beam b = {Norm(sys.connectorPos(c1)-sys.connectorPos(c2)),c1,c2};
   //sys.addBeam(b);
 
-  Spring s = {1.7320508075688772,0.1,c1,c2};
+  Spring s = {1.7320508075688772,10,c1,c2};
   sys.addSpring(s);
   /*
   std::shared_ptr<RhsRBSystem> rhs = std::make_shared<RhsRBSystem>(sys);

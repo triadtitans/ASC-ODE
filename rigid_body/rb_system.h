@@ -217,8 +217,9 @@ class RhsRBSystem : public NonlinearFunction
         f(dim_per_body*l + j) += f_diff.DValue(j);
         f(dim_per_body*k + j) += f_diff.DValue(dim_per_body + j);
       }
+      f(numBodies()*dim_per_body+i) += f_diff.DValue(dim_per_body*2);
 
-      f(numBodies()*dim_per_body+i) += x_diff(numBodies()*dim_per_body+i).DValue(2*dim_per_body);
+      //f(numBodies()*dim_per_body+i) += x_diff(numBodies()*dim_per_body+i).DValue(2*dim_per_body);
     }
 
 
@@ -349,6 +350,7 @@ class RhsRBSystem : public NonlinearFunction
 
         df(dim_per_body*l + j, numBodies()*dim_per_body+i) += f_diff.DDValue(j, 2*dim_per_body);
         df(dim_per_body*k + j, numBodies()*dim_per_body+i) += f_diff.DDValue(dim_per_body + j, 2*dim_per_body);
+
       }
     }
 

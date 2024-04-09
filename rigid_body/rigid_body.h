@@ -3,35 +3,37 @@
 #include <matrix.h>
 #include <vector.h>
 #include <ode.h>
+#include "../src/autodiffdiff.h"
 
-constexpr int dim_per_body = 18;
+constexpr size_t dim_per_body = 18;
 
 class RhsRigidBody;
 
 using namespace ASC_bla;
 using namespace ASC_ode;
 
+template<typename T = double>
 class Transformation{
  public:
-  Vector<double> q_;
+  Vector<T> q_;
 
-  Transformation(Vector<double> q):q_(q){}
+  Transformation(Vector<T> q):q_(q){}
   Transformation():q_(18){}
 
-  Vec<3> apply(Vec<3> pos){
-    Vec<3> trans{q_(0),q_(4),q_(8)};
-    Matrix<double> rot = AsMatrix(q_,3,4).Cols(1,3);
+  Vec<3, T> apply(Vec<3, T> pos){
+    Vec<3, T> trans{q_(0),q_(4),q_(8)};
+    Matrix<T> rot = AsMatrix(q_,3,4).Cols(1,3);
     return trans + rot*pos;
   }
 
-  void setTranslation(double a, double b, double c){q_(0)=a;q_(4)=b;q_(8)=c;}
+  void setTranslation(T a, T b, T c){q_(0)=a;q_(4)=b;q_(8)=c;}
   void setRotation(int i, int j, double r){
     if(i>2||j>2 || j<0 || i <0) throw std::invalid_argument("Rotation Matrix is 3x3");
     q_((4*i + 1) + j)=r; // note the ordering of q
   }
 };
 
-  std::ostream& operator<<(std::ostream& oss, const Transformation& t){
+  std::ostream& operator<<(std::ostream& oss, const Transformation<double>& t){
       oss<<std::fixed << " Translation: \t" << t.q_(0) << " ," << t.q_(4) << ", "<<", " << t.q_(8) << std::endl
                       << " Rotation: \t" << t.q_(1) << " ," << t.q_(2) << ", "<<", " << t.q_(3) <<  std::endl
                      << " \t\t" << t.q_(5) << " ," << t.q_(6) << ", "<<", " << t.q_(7) <<  std::endl
@@ -153,9 +155,9 @@ public:
 
     mass_function = mass;
   }
-  void setQ(Transformation t){q_=t.q_;}
-  void setDq(Transformation t){dq_=t.q_;}
-  void setDdq(Transformation t){ddq_=t.q_;}
+  void setQ(Transformation<> t){q_=t.q_;}
+  void setDq(Transformation<> t){dq_=t.q_;}
+  void setDdq(Transformation<> t){ddq_=t.q_;}
 
   void setMass(Matrix<double> m){mass_function=std::make_shared<LinearFunction>(m);}
   std::shared_ptr<NonlinearFunction> getMassFunc(){return mass_function;}
@@ -176,13 +178,14 @@ public:
     return getQ().apply(relative_pos);
   }
 
-  Transformation getQ(){return q_;}
-  Transformation getDq(){return dq_;}
-  Transformation getDdq(){return ddq_;}
+  Transformation<> getQ(){return q_;}
+  Transformation<> getDq(){return dq_;}
+  Transformation<> getDdq(){return ddq_;}
 
   void simulate(double tend, double steps, std::function<void(double,VectorView<double>)> callback = nullptr ){
     std::shared_ptr<RhsRigidBody> rhs = std::make_shared<RhsRigidBody>(*this);
-    std::shared_ptr<NumericDerivative> dlagrange = std::make_shared<NumericDerivative>(rhs);
+    //std::shared_ptr<NumericDerivative> dlagrange = std::make_shared<NumericDerivative>(rhs);
+    std::shared_ptr<Derivative> dlagrange = std::make_shared<Derivative>(rhs);
    
     SolveODE_Alpha (tend, steps, 0.8, q_, dq_, ddq_, dlagrange, mass_function, callback);
   } 
@@ -193,33 +196,84 @@ class RhsRigidBody : public NonlinearFunction
   public:
   //Just a reminder
   RhsRigidBody(RigidBody b){};
-  size_t DimX() const override { return 18; }
-  size_t DimF() const override { return 1; }
+  size_t DimX() const  { return 18; }
+  size_t DimF() const  { return 1; }
+
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
   {
+    
+    Vector<AutoDiffDiff<18, double>> x_diff(this->DimX());
 
-    Matrix<double> b (3, 3);
+    Vector<AutoDiffDiff<18, double>> f_diff(this->DimF());
+    
+    for (size_t j = 0; j < this->DimX(); j++) 
+    {
+      x_diff(j).Value() = x(j);
+      x_diff(j).DValue(j) = 1;
+    }
+
+    Matrix<AutoDiffDiff<dim_per_body, double>> b (3, 3);
     // extract B from Q
-    b.Row(0) = x.Range(1, 4);
-    b.Row(1) = x.Range(5, 8);
-    b.Row(2) = x.Range(9, 12);
+    b.Row(0) = x_diff.Range(1, 4);
+    b.Row(1) = x_diff.Range(5, 8);
+    b.Row(2) = x_diff.Range(9, 12);
     // b must be orthonormal
-    auto c = TransposeMatExpr(b)* b + (-1)*IdMatExpr(3);
-    Vector<double> g(6);
+    Matrix<double> eye = Diagonal(3, 1);
+    auto c = Transpose(b)* b - eye;
+    Vector<AutoDiffDiff<dim_per_body, double>> g(6);
     g(0)=c(0, 0);
     g(1)=c(1, 0);
     g(2)=c(2, 0);
     g(3)=c(1, 1);
     g(4)=c(2, 1);
     g(5)=c(2, 2);
-    f(0) = x.Range(12, 18)*g;
-  }
-  virtual void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const
-  {
-    dNumeric(*this,x,df);
-  }
+    f_diff(0) = x_diff.Range(12, 18)*g;
 
+    for (size_t j = 0; j < this->DimX(); j++) {
+      f(j) = f_diff(0).DValue(j);
+    }
+    }
+
+  void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
+  {
+    Vector<AutoDiffDiff<18, double>> x_diff(this->DimX());
+
+    Vector<AutoDiffDiff<18, double>> f_diff(this->DimF());
+    
+    for (size_t j = 0; j < this->DimX(); j++) 
+    {
+      x_diff(j).Value() = x(j);
+      x_diff(j).DValue(j) = 1;
+    }
+
+    Matrix<AutoDiffDiff<dim_per_body, double>> b (3, 3);
+    // extract B from Q
+    b.Row(0) = x_diff.Range(1, 4);
+    b.Row(1) = x_diff.Range(5, 8);
+    b.Row(2) = x_diff.Range(9, 12);
+    // b must be orthonormal
+    Matrix<double> eye = Diagonal(3, 1);
+    auto c = Transpose(b)* b - eye;
+    Vector<AutoDiffDiff<dim_per_body, double>> g(6);
+    g(0)=c(0, 0);
+    g(1)=c(1, 0);
+    g(2)=c(2, 0);
+    g(3)=c(1, 1);
+    g(4)=c(2, 1);
+    g(5)=c(2, 2);
+    f_diff(0) = x_diff.Range(12, 18)*g;
+
+    for (size_t j = 0; j < dim_per_body; j++) {
+      for (size_t k = 0; k < dim_per_body; k++) {
+          df(j, k) = f_diff(0).DDValue(j, k);
+      } 
+    }
+  }
 };
+
+  
+
+
 
 
 inline double mass_matrix_data[18*18] ={

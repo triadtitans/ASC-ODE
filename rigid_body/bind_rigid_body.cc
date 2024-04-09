@@ -8,7 +8,7 @@
 
 namespace py = pybind11;
 
-PYBIND11_MAKE_OPAQUE(Transformation);
+PYBIND11_MAKE_OPAQUE(Transformation<>);
 // PYBIND11_MAKE_OPAQUE(MassMatrix);
 
 PYBIND11_MODULE(rigid_body, rbd) {
@@ -23,16 +23,16 @@ PYBIND11_MODULE(rigid_body, rbd) {
     // the main bindings:
     rbd.doc() = "rigid body simulator";       
        
-    py::class_<Transformation>(rbd,"Transformation")
+    py::class_<Transformation<>>(rbd,"Transformation")
       .def(py::init<>())
-      .def("__str__", [](Transformation & t) {
+      .def("__str__", [](Transformation<> & t) {
         std::stringstream sstr;
         sstr << t;
         return sstr.str();
       })
-      .def("setTranslation",&Transformation::setTranslation)
-      .def("setRotation",&Transformation::setRotation)
-      .def("asTuple",[](Transformation& t){
+      .def("setTranslation",&Transformation<>::setTranslation)
+      .def("setRotation",&Transformation<>::setRotation)
+      .def("asTuple",[](Transformation<>& t){
         // *column-major* transformation matrix as in https://threejs.org/docs/#api/en/math/Matrix4
         // old version: return py::make_tuple(t.q_(3),t.q_(6),t.q_(9),0,t.q_(4),t.q_(7),t.q_(10),0,t.q_(5),t.q_(8),t.q_(11),0,t.q_(0),t.q_(1),t.q_(2),1);
         // new version, converts Schöberl-style ordering of Q to column-major ordering of a three.js transformation matrix:

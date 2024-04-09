@@ -26,6 +26,9 @@ target_link_libraries (test_newmark PUBLIC)
 add_executable (test_alpha demos/test_alpha.cc)
 target_link_libraries (test_alpha PUBLIC)
 
+add_executable (test_autodiff demos/test_autodiff.cc)
+target_link_libraries (test_autodiff PUBLIC)
+
 add_executable (test_cube demos/test_cube.cc)
 target_link_libraries (test_cube PUBLIC)
 

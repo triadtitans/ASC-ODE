@@ -134,6 +134,23 @@ class NumericDerivative : public NonlinearFunction
   }
 };
 
+class Derivative : public NonlinearFunction
+{
+  std::shared_ptr<NonlinearFunction> g_;
+  public:
+  size_t DimX() const override { return g_->DimX(); }
+  size_t DimF() const override { return DimX(); }
+  Derivative(std::shared_ptr<NonlinearFunction> g): g_(g){};
+  void Evaluate (VectorView<double> x, VectorView<double> f) const override
+  {
+    g_->Evaluate(x, f);
+  }
+  virtual void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const
+  {
+    g_->EvaluateDeriv(x, df);
+  }
+};
+
   class ConstantFunction : public NonlinearFunction
   {
     Vector<> val;

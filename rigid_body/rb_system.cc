@@ -1,4 +1,5 @@
 #include "rb_system.h"
+#include <iomanip>
 
 int main(){
 
@@ -49,6 +50,23 @@ int main(){
 
   Spring s = {1.7320508075688772,0.1,c1,c2};
   sys.addSpring(s);
+  /*
+  std::shared_ptr<RhsRBSystem> rhs = std::make_shared<RhsRBSystem>(sys);
+  
+  Vector<> x(sys.dimension());
+  Vector<> f(sys.dimension());
+  Matrix<> df(sys.dimension(), sys.dimension());
+  x = 1;
+  */
+  //rhs->Evaluate(x, f);
+  
+  //rhs->EvaluateDeriv(x, df);
+
+  //cout << "Gradient: \n" << f << "\n" << endl;
+
+  //cout << "Hesse: \n" << std::fixed << std::setprecision(1) << df;
+
+  
   sys.simulate(tend,steps, [](double t, VectorView<double> q) { 
                     std::cout<<std::fixed << t << ": Translation =" << q(0) << " ," << q(4) << ", "<<", " << q(8) << "} " << std::endl
                       <<"\t"<< " Rotation: " << q(1) << " ," << q(2) << ", "<<", " << q(3) << "} " << std::endl
@@ -58,4 +76,5 @@ int main(){
                       <<"\t"<< " Rotation: " << q.Range(18,36)(1) << " ," << q.Range(18,36)(2) << ", "<<", " << q.Range(18,36)(3) << "} " << std::endl
                       <<"\t"<< "           " << q.Range(18,36)(5) << " ," << q.Range(18,36)(6) << ", "<<", " << q.Range(18,36)(7) << "} " << std::endl
                       <<"\t"<< "           " << q.Range(18,36)(9) << " ," << q.Range(18,36)(10) << ", "<<", " << q.Range(18,36)(11) << "} " << std::endl; });    
+  
 }

@@ -117,9 +117,11 @@ class EQRigidBody : public NonlinearFunction
     Matrix<double> Bhalf(3, 3);
     Bhalf = 0.5*(Bnew + Bold);
 
+    // std::cout << vskew << "\n" << std::endl;
+
     // I
     f.Range(0, 3) = (1/h_)*(anew - aold) - vtrans;
-    f.Range(3, 6) = (1/h_)*inv_hat_map(Transpose(Bhalf)*(Bnew - Bold)) - vtrans;
+    f.Range(3, 6) = (1/h_)*inv_hat_map(Transpose(Bhalf)*(Bnew - Bold)) - vskew;
 
     // II
     Vector<double> vhat(6);
@@ -231,15 +233,23 @@ public:
   Vector<double> getPhat(){return phat_;}
 
   void simulate(double tend, double steps, std::function<void(int,double,VectorView<double>)> callback = nullptr ){
+    // solution variable for newton
     Vector<double> state(30);
+    // copy over current values 
     state.Range(0,3)=getQ().getTranslation();
     AsMatrix(state.Range(3, 12), 3, 3) = getQ().getRotation();
     state.Range(18, 24) = phat_;
+
     for (size_t step=0; step < steps; step++){
+      // set up equation
       auto q = getQ();
       auto p = getPhat();
       std::shared_ptr<EQRigidBody> eq = std::make_shared<EQRigidBody>(q, p, tend/steps);
+
+      // solve equation
       NewtonSolver(eq, state, 1e-10, 10, callback);
+
+      //store data
       Transformation<double> Q = getQ();
       Q.setTranslation(state(0),state(1),state(2));
       Q.setRotation(AsMatrix(state.Range(3, 12), 3, 3));

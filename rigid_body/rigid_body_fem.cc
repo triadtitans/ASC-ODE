@@ -15,17 +15,17 @@ int main()
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
   Vector<double> phat(6);
   phat = 0;
-  phat(0) = 0.1;
+  phat(3) = 1;
  
   Matrix<double> inertia_matrix(3, 3);
   MatrixView<double> inertia_v (inertia_matrix);
   RigidBody rb(q,phat,1,Vec<3>{0,0,0},inertia_v);
-  std::cout << "listmass_matrix:={";
-  rb.simulate(tend,steps, [](int i, double t, VectorView<double> q) { 
-                    std::cout<<std::fixed << t << ": Translation =" << q(0) << " ," << q(1) << ", "<<", " << q(2) << "} " << std::endl
+  rb.simulate(tend,steps , [](int i, double t, VectorView<double> q) { 
+                    std::cout<<std::fixed << "newton-iteration: " << i << " newton-error: " << t << std::endl
+                      <<"\t"<< "Translation =" << q(0) << " ," << q(1) << ", "<<", " << q(2) << "} " << std::endl
                       <<"\t"<< " Rotation: " << q(3) << " ," << q(4) << ", "<<", " << q(5) << "} " << std::endl
                       <<"\t"<< "           " << q(6) << " ," << q(7) << ", "<<", " << q(8) << "} " << std::endl
-                      <<"\t"<< "           " << q(9) << " ," << q(10) << ", "<<", " << q(11) << "} " << std::endl; }                   
+                      <<"\t"<< "           " << q(9) << " ," << q(10) << ", "<<", " << q(11) << "} " << std::endl << std::endl; }                   
                    );
   std::cout << "}";
 }

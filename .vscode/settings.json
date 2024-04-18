@@ -95,6 +95,10 @@
         "stack": "cpp",
         "__nullptr": "cpp",
         "__string": "cpp",
-        "codecvt": "cpp"
+        "codecvt": "cpp",
+        "hash_map": "cpp",
+        "source_location": "cpp",
+        "ranges": "cpp",
+        "stdfloat": "cpp"
     }
 }

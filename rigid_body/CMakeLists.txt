@@ -4,6 +4,9 @@ target_link_libraries (test_rigid_body PUBLIC)
 add_executable (test_rb_system rb_system.cc)
 target_link_libraries (test_rb_system PUBLIC)
 
+add_executable (test_rb_fem rigid_body_fem.cc)
+target_link_libraries (test_rb_fem PUBLIC)
+
 find_package(Python 3.8 COMPONENTS Interpreter Development REQUIRED)
 
 execute_process(

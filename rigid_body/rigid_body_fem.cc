@@ -5,7 +5,7 @@ int main()
 {
   double tend = 50*2*M_PI;
   double steps = 10000;
-  Vector<double> q { 18 };
+  Vector<double> q ( 18 );
   q(0)=0; q(4)=0; q(8)=0; 
 
   q(1)=1; q(2)=0; q(3)=0; 

@@ -5,7 +5,7 @@ int main()
 {
   double tend = 50*2*M_PI;
   double steps = 10000;
-  Vector<double> q { 18 };
+  Vector<double> q (18);
   q(0)=0; q(4)=0; q(8)=0; 
 
   q(1)=1; q(2)=0; q(3)=0; 
@@ -13,12 +13,12 @@ int main()
   q(9)=0; q(10)=0; q(11)=1; 
   
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
-  Vector<double> dq { 18 };
+  Vector<double> dq (18);
   dq(0)=0.00001;
   dq(10)=0.001;
   dq(7)=-0.001;
  
-  Vector<double> ddq { 18 };
+  Vector<double> ddq (18);
   MatrixView<double> inertia_matrix(3,3,inertia_matrix_data);
   RigidBody rb(q,dq,ddq,1,Vec<3>{0,0,0},inertia_matrix);
   std::cout << "listmass_matrix:={";

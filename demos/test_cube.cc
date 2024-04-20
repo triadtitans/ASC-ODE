@@ -147,7 +147,7 @@ int main()
 
   double tend = 50*2*M_PI;
   double steps = 10000;
-  Vector<double> q { 18 };
+  Vector<double> q (18);
   q(0)=0; q(1)=0; q(2)=0; 
 
   q(3)=1; q(4)=0; q(5)=0; 
@@ -155,11 +155,11 @@ int main()
   q(9)=0; q(10)=0; q(11)=1; 
   
   q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
-  Vector<double> dq { 18 };
+  Vector<double> dq (18);
   dq(0)=0.00001;
   dq(10)=0.001;
  
-  Vector<double> ddq { 18 };
+  Vector<double> ddq {(18);
 
   MatrixView<double> mass_matrix(18,18,mass_matrix_data);
 

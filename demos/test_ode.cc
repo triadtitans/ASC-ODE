@@ -60,7 +60,7 @@ int main()
 {
   double tend = 4*M_PI;
   int steps = 1000;
-  Vector<double> y {2};
+  Vector<double> y (2);
   y(0)=1;
   y(1)=0;
   auto rhs = std::make_shared<MassSpring>();

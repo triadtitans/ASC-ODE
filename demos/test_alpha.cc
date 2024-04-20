@@ -120,13 +120,13 @@ int main()
 
   double tend = 50*2*M_PI;
   double steps = 10000;
-  Vector<double> x { 6 };
+  Vector<double> x (6);
   x(0)=1;
   x(1)=0;
   x(2)=1;
   x(3)=-1;
-  Vector<double> dx { 6 };
-  Vector<double> ddx { 6 };
+  Vector<double> dx (6);
+  Vector<double> ddx (6);
   auto rhs = std::make_shared<dLagrangeDoublePendulum>();
   auto mass = std::make_shared<Projector>(6, 0, 4);
   std::cout << "list:={";

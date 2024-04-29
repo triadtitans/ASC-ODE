@@ -7,7 +7,7 @@
 
 constexpr size_t dim_per_body = 18;
 
-class RigidBody;
+class RigidBody_FEM;
 
 using namespace ASC_bla;
 using namespace ASC_ode;
@@ -53,7 +53,7 @@ class Transformation{
     q_((4*i + 1) + j)=r; // note the ordering of q
   }
   template<typename S>
-  void setRotation(const MatrixExpr<S>& B){
+  void setRotation_from_matrix(const MatrixExpr<S>& B){
     for (size_t i=0; i < 3; i++){
       for (size_t j=0; j < 3; j++){
         setRotation(i, j, B(i, j));
@@ -156,7 +156,7 @@ class EQRigidBody : public NonlinearFunction
 };
 
 
-class RigidBody {
+class RigidBody_FEM {
   Vector<double> q_;
   Vector<double> phat_;
   Vector<double> initialq_;
@@ -171,24 +171,22 @@ class RigidBody {
 public:
 
   template<typename T>
-  RigidBody(Vector<double> q,Vector<double> phat,double mass, Vec<3> center_of_mass,MatrixExpr<T>& inertia)
+  RigidBody_FEM(Vector<double> q,Vector<double> phat,double mass, Vec<3> center_of_mass, MatrixExpr<T>& inertia)
         : q_(q), phat_(phat), initialq_(q), initialphat_(phat), center_of_mass_(center_of_mass),
           mass_(mass), inertia_(inertia), P_(6, 12) {
     if(inertia.Width() != 3) throw std::invalid_argument("Inertia matrix must be 3x3");
     if(inertia.Height() != 3) throw std::invalid_argument("Inertia matrix must be 3x3");
     if(q.Size() != dim_per_body) throw std::invalid_argument("q Vector must match mass matrix");
     if(phat.Size() != 6) throw std::invalid_argument("q Vector must match mass matrix");
-
   }
 
-  /* 
-  RigidBody()
+  RigidBody_FEM()
         :   mass_function(std::make_shared<LinearFunction>(Matrix(18,18))),
-          q_(18),dq_(18),ddq_(18), initialq_(18),initialdq_(18),initialddq_(18),inertia_(3,3),center_of_mass_{0,0,0}{
+          q_(18), initialq_(18), phat_(6), initialphat_(6), inertia_(3,3),center_of_mass_{0,0,0}, P_(6, 12){
     q_(1)=1;q_(6)=1;q_(11)=1;
-    recalcMassMatrix();
   }
- */
+  
+ 
   double& mass(){return mass_;}
   Vec<3>& center(){return center_of_mass_;}
   Matrix<double>& inertia(){return inertia_;}
@@ -211,6 +209,9 @@ public:
 
   void setQ(Transformation<> t){q_=t.q_;}
   void setPhat(Vector<double> v){phat_=v;}
+  void setPhat_v(size_t i, double a) {
+    phat_(i) = a;
+  }
 
   void setMass(Matrix<double> m){mass_function=std::make_shared<LinearFunction>(m);}
   std::shared_ptr<NonlinearFunction> getMassFunc(){return mass_function;}
@@ -252,7 +253,7 @@ public:
       //store data
       Transformation<double> Q = getQ();
       Q.setTranslation(state(0),state(1),state(2));
-      Q.setRotation(AsMatrix(state.Range(3, 12), 3, 3));
+      Q.setRotation_from_matrix(AsMatrix(state.Range(3, 12), 3, 3));
       setQ(Q);
       phat_ = state.Range(18, 24);
     }

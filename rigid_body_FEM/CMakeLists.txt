@@ -1,0 +1,18 @@
+add_executable (test_rb_fem rigid_body_fem.cc)
+target_link_libraries (test_rb_fem PUBLIC)
+
+find_package(Python 3.8 COMPONENTS Interpreter Development REQUIRED)
+
+execute_process(
+  COMMAND "${Python_EXECUTABLE}" -m pybind11 --cmakedir
+  OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE PYBIND11_DIR)
+list(APPEND CMAKE_PREFIX_PATH "${PYBIND11_DIR}")
+find_package(pybind11 CONFIG REQUIRED)
+
+pybind11_add_module(rigid_body_FEM bind_rigid_body_FEM.cc)
+target_link_libraries (rigid_body_FEM PUBLIC)
+add_custom_command(TARGET rigid_body_FEM POST_BUILD 
+  COMMAND "${CMAKE_COMMAND}" -E copy 
+     "$<TARGET_FILE:rigid_body_FEM>"
+     "rigid_body_FEM.so" 
+  COMMENT "Copying to output directory")

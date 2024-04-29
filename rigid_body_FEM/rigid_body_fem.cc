@@ -19,7 +19,7 @@ int main()
  
   Matrix<double> inertia_matrix(3, 3);
   MatrixView<double> inertia_v (inertia_matrix);
-  RigidBody rb(q,phat,1,Vec<3>{0,0,0},inertia_v);
+  RigidBody_FEM rb(q,phat,1,Vec<3>{0,0,0},inertia_v);
   rb.simulate(tend,steps , [](int i, double t, VectorView<double> q) { 
                     std::cout<<std::fixed << "newton-iteration: " << i << " newton-error: " << t << std::endl
                       <<"\t"<< "Translation =" << q(0) << " ," << q(1) << ", "<<", " << q(2) << "} " << std::endl

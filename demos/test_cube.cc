@@ -159,7 +159,7 @@ int main()
   dq(0)=0.00001;
   dq(10)=0.001;
  
-  Vector<double> ddq {(18);
+  Vector<double> ddq {(18)};
 
   MatrixView<double> mass_matrix(18,18,mass_matrix_data);
 

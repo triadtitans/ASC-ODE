@@ -34,3 +34,4 @@ target_link_libraries (test_cube PUBLIC)
 
 add_subdirectory (mass_spring)
 add_subdirectory (rigid_body)
+add_subdirectory (rigid_body_FEM)

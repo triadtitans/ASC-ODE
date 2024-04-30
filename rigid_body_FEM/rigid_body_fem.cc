@@ -22,20 +22,21 @@ int main()
   RigidBody_FEM rb(q,phat,1,Vec<3>{0,0,0},inertia_v);
   RigidBody_FEM rb2(q,phat,1,Vec<3>{0,0,0},inertia_v);
   RBS_FEM rbs;
+  rbs.gravity() = {0, 0, 9.81};
   rbs.bodies().push_back(rb);
   rbs.bodies().push_back(rb2);
 
-  rbs.simulate(tend,steps , [](int i, double t, VectorView<double> q) { 
-                    std::cout<<std::fixed << "Body1 newton-iteration: " << i << " newton-error: " << t << std::endl
+  simulate(rbs,tend, steps , [](int i, double t, VectorView<double> q) { 
+                    std::cout<<std::fixed << "Body 1: " // << "Body1 newton-iteration: " << i << " newton-error: " << t << std::endl
                       <<"\t"<< "Translation =" << q(0) << " ," << q(1) << ", "<<", " << q(2) << "} " << std::endl
                       <<"\t"<< " Rotation: " << q(3) << " ," << q(4) << ", "<<", " << q(5) << "} " << std::endl
                       <<"\t"<< "           " << q(6) << " ," << q(7) << ", "<<", " << q(8) << "} " << std::endl
-                      <<"\t"<< "           " << q(9) << " ," << q(10) << ", "<<", " << q(11) << "} " << std::endl << std::endl;}
-                      // << "Body2 newton-iteration: " << i << " newton-error: " << t << std::endl
-                      // <<"\t"<< "Translation =" << q(0+30) << " ," << q(1+30) << ", "<<", " << q(2+30) << "} " << std::endl
-                      // <<"\t"<< " Rotation: " << q(3+30) << " ," << q(4+30) << ", "<<", " << q(5+30) << "} " << std::endl
-                      // <<"\t"<< "           " << q(6+30) << " ," << q(7+30) << ", "<<", " << q(8+30) << "} " << std::endl
-                      // <<"\t"<< "           " << q(9+30) << " ," << q(10+30) << ", "<<", " << q(11+30) << "} " << std::endl << std::endl; }                   
+                      <<"\t"<< "           " << q(9) << " ," << q(10) << ", "<<", " << q(11) << "} " << std::endl << std::endl
+                      << "Body 2: "// << "Body2 newton-iteration: " << i << " newton-error: " << t << std::endl
+                      <<"\t"<< "Translation =" << q(0+30) << " ," << q(1+30) << ", "<<", " << q(2+30) << "} " << std::endl
+                      <<"\t"<< " Rotation: " << q(3+30) << " ," << q(4+30) << ", "<<", " << q(5+30) << "} " << std::endl
+                      <<"\t"<< "           " << q(6+30) << " ," << q(7+30) << ", "<<", " << q(8+30) << "} " << std::endl
+                      <<"\t"<< "           " << q(9+30) << " ," << q(10+30) << ", "<<", " << q(11+30) << "} " << std::endl << std::endl; }                   
                    );
   std::cout << "}";
 }

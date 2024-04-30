@@ -6,6 +6,8 @@
 #include "../src/autodiffdiff.h"
 
 constexpr size_t dim_per_body = 18;
+constexpr size_t eq_per_body = 30;
+
 
 class RigidBody_FEM;
 
@@ -39,7 +41,7 @@ class Transformation{
   Vector<T> q_;
 
   Transformation(Vector<T> q):q_(q){}
-  Transformation():q_(18){}
+  Transformation():q_(12){}
 
   Vec<3, T> apply(Vec<3, T> pos){
     Vec<3, T> trans{q_(0),q_(4),q_(8)};
@@ -155,6 +157,33 @@ class EQRigidBody : public NonlinearFunction
   }
 };
 
+class EQRigidBodySystem : public NonlinearFunction
+{
+  std::shared_ptr<StackedFunction> _func;
+  size_t _num_bodies;
+  public:
+  size_t DimX() const  { return eq_per_body*_num_bodies; }
+  size_t DimF() const  { return  eq_per_body*_num_bodies; }
+  EQRigidBodySystem(Vector<double> state, size_t num_bodies, double h):_num_bodies(num_bodies){
+    _func = std::make_shared<StackedFunction>();
+    for(int i=0;i<num_bodies;i++){
+      auto q = state.Range(i*dim_per_body,i*dim_per_body+12);
+      auto p = state.Range(i*dim_per_body+12,i*dim_per_body+18);
+      std::shared_ptr<EQRigidBody> eq = std::make_shared<EQRigidBody>(Transformation<double>(q), p, h);
+      _func->addFunction(eq);
+    }
+  }
+
+  void Evaluate (VectorView<double> x, VectorView<double> f) const override
+  {
+    _func->Evaluate(x,f);
+  }
+  void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
+  {
+    _func->EvaluateDeriv(x,df);
+  }
+};
+
 
 class RigidBody_FEM {
   Vector<double> q_;
@@ -176,7 +205,7 @@ public:
           mass_(mass), inertia_(inertia), P_(6, 12) {
     if(inertia.Width() != 3) throw std::invalid_argument("Inertia matrix must be 3x3");
     if(inertia.Height() != 3) throw std::invalid_argument("Inertia matrix must be 3x3");
-    if(q.Size() != dim_per_body) throw std::invalid_argument("q Vector must match mass matrix");
+    //if(q.Size() != dim_per_body) throw std::invalid_argument("q Vector must match mass matrix");
     if(phat.Size() != 6) throw std::invalid_argument("q Vector must match mass matrix");
   }
 
@@ -195,7 +224,8 @@ public:
   void recalcMassMatrix(){
     mass_function = nullptr;
     //Times 2 because of derivative of x * Ax in x is Ax + A(T)x
-    auto diag_function=std::make_shared<LinearFunction>(2*diagonal_block_from_inertia(inertia_,center_of_mass_,mass_));
+    auto diag_function=std::make_shared<LinearFunction+
+    >(2*diagonal_block_from_inertia(inertia_,center_of_mass_,mass_));
     auto block_func =std::make_shared<BlockFunction>(diag_function,3);
     auto mass = std::make_shared<StackedFunction>();
     mass->addFunction(block_func);
@@ -206,6 +236,9 @@ public:
     mass_function = mass;
   }
   */
+
+  Vector<double>& q(){return q_;}
+  Vector<double>& phat(){return phat_;}
 
   void setQ(Transformation<> t){q_=t.q_;}
   void setPhat(Vector<double> v){phat_=v;}
@@ -246,7 +279,12 @@ public:
       auto q = getQ();
       auto p = getPhat();
       std::shared_ptr<EQRigidBody> eq = std::make_shared<EQRigidBody>(q, p, tend/steps);
-
+      Matrix<double> df(30,30);
+      eq->EvaluateDeriv(state,df);
+      std::cout << df.Rows(0,30).Cols(0,30) << std::endl;
+      Vector<double> test(30);
+       eq->Evaluate(state,test);
+            std::cout << test<< std::endl;
       // solve equation
       NewtonSolver(eq, state, 1e-10, 10, callback);
 
@@ -258,4 +296,90 @@ public:
       phat_ = state.Range(18, 24);
     }
   } 
+};
+
+class RBS_FEM{
+  std::vector<RigidBody_FEM> _bodies;
+
+  public:
+  std::vector<RigidBody_FEM>& bodies(){return _bodies;}
+  void getState(VectorView<double> out){
+    for(int i=0; i<_bodies.size(); i++){
+      out.Range(i*dim_per_body,i*dim_per_body+12)=_bodies[i].q();
+      out.Range(i*dim_per_body+12, (i+1)*dim_per_body)=_bodies[i].phat();
+    }
+  }
+
+  void setState(VectorView<double> in){
+    for(int i=0; i<_bodies.size(); i++){
+      _bodies[i].q()=in.Range(i*dim_per_body,i*dim_per_body+12);
+      _bodies[i].phat()=in.Range(i*dim_per_body+12, (i+1)*dim_per_body);
+    }
+  }
+
+  Vector<double> xToState(VectorView<double>v ){
+    if(v.Size()%eq_per_body)
+      throw std::invalid_argument("Vector must be in Equation format");
+    size_t num_bodies=v.Size()/eq_per_body ;
+    Vector<double> res(num_bodies * dim_per_body);
+    for(size_t i = 0;i<num_bodies; i++){
+      Transformation<double> Q;
+      Q.setTranslation(v(0),v(1),v(2));
+      Q.setRotation_from_matrix(AsMatrix(v.Range(3, 12), 3, 3));
+      
+      res.Range(i*dim_per_body,i*dim_per_body+12)=Q.q_;
+
+      res.Range(i*dim_per_body+12,i*dim_per_body+18)=v.Range(i*eq_per_body+18,i*eq_per_body+24);
+    }
+    return res;
+  }
+
+  Vector<double> stateToX (VectorView<double>x ){
+    if(x.Size()%dim_per_body)
+      throw std::invalid_argument("Vector must be in Equation format");
+    size_t num_bodies=x.Size()/dim_per_body ;
+    Vector<double> res(num_bodies * eq_per_body);
+    for(size_t i = 0;i<num_bodies; i++){
+      Transformation<double> Q;
+      Q.q_=x.Range(i*dim_per_body,i*dim_per_body+12);
+
+      res.Range(i*eq_per_body,i*eq_per_body+3)=Q.getTranslation();
+      AsMatrix(res.Range(i*eq_per_body+3,i*eq_per_body+12), 3, 3) = Q.getRotation();
+      
+
+      res.Range(i*eq_per_body+18,i*eq_per_body+24)=x.Range(i*dim_per_body+12,i*dim_per_body+18);
+    }
+    return res;
+  }
+
+  void simulate(double tend, double steps, std::function<void(int,double,VectorView<double>)> callback = nullptr ){  
+  
+    Vector<double> state(dim_per_body*_bodies.size());
+    
+    Vector<double> x(eq_per_body*_bodies.size());
+    // copy over current values 
+    getState(state);
+    std::cout << state << std::endl;
+    x = stateToX(state);
+    std::cout << x<< std::endl;
+    for (size_t step=0; step < steps; step++){
+      std::shared_ptr<EQRigidBodySystem> eq = std::make_shared<EQRigidBodySystem>(state,_bodies.size(), tend/steps);
+      // solve equation
+      Matrix<double> df(60,60);
+      //Vector<double> test(30);
+      //eq->Evaluate(x,test);
+      //auto mv = df.Cols(0,30).Rows(0,30);
+      //Matrix<double> mv(30,30);
+      //eq->EvaluateDeriv(x,df);
+      //std::cout << test<< std::endl;
+      //std::cout << df << std::endl;
+      NewtonSolver(eq, x, 1e-10, 10, callback);
+
+      state = xToState(x);
+
+      //store data
+      setState(state);
+    }
+
+  }
 };

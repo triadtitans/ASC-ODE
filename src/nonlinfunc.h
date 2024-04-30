@@ -90,7 +90,8 @@ namespace ASC_ode
       size_t cursor_x=0;
       size_t cursor_f=0;
       f=0;
-      for(auto func : _functions){
+      for(int i=0;i<_functions.size();i++ ){
+        auto func = _functions[i];
         //The Jacobian of the stacked function is a block diagonal matrix, consisting of the individual Jacobians
         MatrixView<double> currentBlock = f.Cols(cursor_x,func->DimX()).Rows(cursor_f,func->DimF());
         func->EvaluateDeriv(x.Range(cursor_x,cursor_x+func->DimX()),currentBlock);
@@ -112,6 +113,7 @@ namespace ASC_ode
         f.Evaluate (xl, fl);
         f.Evaluate (xr, fr);
         df.Col(i) = 1/(2*eps) * (fr-fl);
+
       }
   }
 //Numeric derivative of a scalar function

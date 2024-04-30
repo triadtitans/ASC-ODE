@@ -34,5 +34,7 @@ ascpy/**
 venv/**
 venv~/**
 build/**
+rbd_build/** 
+dist/** 
 
 .ipynb_checkpoints

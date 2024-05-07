@@ -5,10 +5,6 @@
 #include <ode.h>
 #include "../src/autodiffdiff.h"
 
-namespace rbd_standard{
-  #include "../rigid_body/rigid_body.h"
-}
-
 constexpr size_t dim_per_body = 18;
 constexpr size_t eq_per_body = 30;
 
@@ -178,12 +174,7 @@ public:
   Transformation<> getQ(){return q_;}
   Vector<double> getPhat(){return phat_;}
 
-  void recalcMassMatrix(){
-    mass_function = nullptr;
-    //Times 2 because of derivative of x * Ax in x is Ax + A(T)x
-    auto diag_function=std::make_shared<LinearFunction>(2*rbd_standard::diagonal_block_from_inertia(inertia_,center_of_mass_,mass_));
-    mass_function = std::make_shared<BlockFunction>(diag_function,3);
-  } 
+  
 };
 
 

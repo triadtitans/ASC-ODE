@@ -74,12 +74,30 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
           r.inertia()=m;
       })
       //.def("setMass", &RigidBody::setMass)
-      //.def("recalcMassMatrix", &RigidBody_FEM::recalcMassMatrix)
+      .def("recalcMassMatrix", &RigidBody_FEM::recalcMassMatrix)
       .def("saveState", &RigidBody_FEM::saveState)
       .def("reset", &RigidBody_FEM::reset) 
-      .def("setPhat", &RigidBody_FEM::setPhat_v) 
-      .def("simulate",[](RigidBody_FEM& r, double tend,double steps) {r.simulate(tend,steps);});
+      .def("setPhat", &RigidBody_FEM::setPhat_v);
     //rbd.def("mass_matrix_from_inertia", &mass_matrix_from_inertia, "generates the a mass matrix from given inertia, center and mass",
             //py::arg("inertia_matrix"), py::arg("center_of_mass"), py::arg("mass"));
+
+    py::class_<RBS_FEM> (rbd, "RBS_FEM")
+      .def(py::init<>())
+      .def("bodies", &RBS_FEM::bodies)
+      .def("addBody",&RBSystem::addBody)
+      //.def("addBeam",&RBSystem::addBeam)
+      //.def("addSpring",&RBSystem::addSpring)
+      //.def("addFix",&RBSystem::addFix)
+      .def_property("gravity",
+        [](RBS_FEM& r){
+          std::array<double,3> t;
+          for (int i = 0;i<3;i++) t[i]=r.gravity()(i);
+          return t;
+        },
+        [](RBS_FEM& r, std::array<double,3> t){
+          for (int i = 0;i<3;i++) r.gravity()(i)=t[i];
+        });
+
+    rbd.def("simulate", &simulate, "main simulation for one frame");
   
 }

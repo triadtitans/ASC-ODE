@@ -34,12 +34,14 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
       .def("setRotation",&Transformation<>::setRotation)
       .def("asTuple",[](Transformation<>& t){
         // *column-major* transformation matrix as in https://threejs.org/docs/#api/en/math/Matrix4
-        // old version: return py::make_tuple(t.q_(3),t.q_(6),t.q_(9),0,t.q_(4),t.q_(7),t.q_(10),0,t.q_(5),t.q_(8),t.q_(11),0,t.q_(0),t.q_(1),t.q_(2),1);
-        // new version, converts Schöberl-style ordering of Q to column-major ordering of a three.js transformation matrix:
+        // converts Schöberl-style ordering of Q to column-major ordering of a three.js transformation matrix:
         return py::make_tuple(t.q_(1), t.q_(5), t.q_(9), 0, t.q_(2), t.q_(6), t.q_(10), 0, t.q_(3), t.q_(7), t.q_(11), 0, t.q_(0), t.q_(4), t.q_(8), 1);
       });
 
-    
+    py::class_<Connector>(rbd,"Connector")
+      .def_property("pos",[](Connector& c){return py::make_tuple(c.pos(0),c.pos(1),c.pos(2));},
+                          [](Connector& c, std::array<double,3> t){c.pos(0)=t[0];c.pos(1)=t[1];c.pos(2)=t[2];})
+      .def_property_readonly("type",[](Connector& c){return c.t == ConnectorType::mass ? 0 : 1 ;});
 
     py::class_<RigidBody_FEM> (rbd, "RigidBody_FEM")
       .def(py::init<>())
@@ -74,12 +76,40 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
           r.inertia()=m;
       })
       //.def("setMass", &RigidBody::setMass)
-      //.def("recalcMassMatrix", &RigidBody_FEM::recalcMassMatrix)
+      .def("recalcMassMatrix", &RigidBody_FEM::recalcMassMatrix)
       .def("saveState", &RigidBody_FEM::saveState)
       .def("reset", &RigidBody_FEM::reset) 
-      .def("setPhat", &RigidBody_FEM::setPhat_v) 
-      .def("simulate",[](RigidBody_FEM& r, double tend,double steps) {r.simulate(tend,steps);});
+      .def("setPhat", &RigidBody_FEM::setPhat_v);
+      
     //rbd.def("mass_matrix_from_inertia", &mass_matrix_from_inertia, "generates the a mass matrix from given inertia, center and mass",
             //py::arg("inertia_matrix"), py::arg("center_of_mass"), py::arg("mass"));
+
+
+    py::class_<RBS_FEM> (rbd, "RBS_FEM")
+      .def(py::init<>())
+      .def("saveState", &RBS_FEM::saveState)
+      .def("addBody",&RBS_FEM::addBody)
+      //.def("addBeam",&RBS_FEM::addBeam)
+      //.def("addSpring",&RBS_FEM::addSpring)
+      //.def("addFix",&RBS_FEM::addFix)
+      //.def("simulate", [](RBS_FEM& sys,double tend, double steps){sys.simulate(tend,steps);})
+      .def("bodies", &RBS_FEM::bodies)
+      .def_property("gravity",
+        [](RBS_FEM& r){
+          std::array<double,3> t;
+          for (int i = 0;i<3;i++) t[i]=r.gravity()(i);
+          return t;
+        },
+        [](RBS_FEM& r, std::array<double,3> t){
+          for (int i = 0;i<3;i++) r.gravity()(i)=t[i];
+        });
+      //.def("beams", &RBS_FEM::beams)
+      //.def("springs", &RBS_FEM::springs)
+      //.def("saveState", &RBS_FEM::saveState)
+      //.def("reset", &RBS_FEM::reset)
+      //.def("connectorPos", [](RBS_FEM &r, Connector c){ auto v= r.connectorPos(c); return py::make_tuple(v(0),v(1),v(2));});
+
+
+    rbd.def("simulate",[](RBS_FEM& rbs, double tend, double steps) {simulate(rbs, tend, steps);});
   
 }

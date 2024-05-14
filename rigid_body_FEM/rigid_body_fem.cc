@@ -3,8 +3,8 @@
 
 int main()
 {
-  double tend = 50*2*M_PI;
-  double steps = 10000;
+  double tend = 5*60;
+  double steps = 100*60;
   Vector<double> q ( 12 );
   q(0)=0; q(4)=0; q(8)=0; 
 
@@ -15,12 +15,18 @@ int main()
   //q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
   Vector<double> phat(6);
   phat = 0;
-  phat(3) = 1;
+  phat(3) = 0.01;
  
   Matrix<double> inertia_matrix(3, 3);
   MatrixView<double> inertia_v (inertia_matrix);
   RigidBody_FEM rb(q,phat,1,Vec<3>{0,0,0},inertia_v);
   RigidBody_FEM rb2(q,phat,1,Vec<3>{0,0,0},inertia_v);
+  /* RigidBody_FEM rb;
+  rb.setPhat_v(3, 0.01);
+
+  RigidBody_FEM rb2;
+  rb2.setPhat_v(3, 0.01); */
+
   RBS_FEM rbs;
   rbs.gravity() = {0, 0, 9.81};
   rbs.bodies().push_back(rb);

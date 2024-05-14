@@ -5,9 +5,9 @@
 #include <ode.h>
 #include "../src/autodiffdiff.h"
 
+
 constexpr size_t dim_per_body = 18;
 constexpr size_t eq_per_body = 30;
-
 
 class RigidBody_FEM;
 class RBS_FEM;
@@ -17,6 +17,8 @@ class EQRBSystem;
 using namespace ASC_bla;
 using namespace ASC_ode;
 
+
+// convert vector v to skew-symmetric matrix
 template<typename T>
 auto hat_map(const VecExpr<T>& v){
   Matrix<decltype(1.0*v(0))> M(3, 3);
@@ -29,6 +31,7 @@ auto hat_map(const VecExpr<T>& v){
   return M;
 }
 
+// convert skew-symmetric matrix to vector
 template<typename T>
 auto inv_hat_map(const MatrixExpr<T>& M){
   Vector<decltype(1.0 * M(0, 0))> v(3);
@@ -37,6 +40,7 @@ auto inv_hat_map(const MatrixExpr<T>& M){
   v(2) = (M(1, 0) - M(0, 1))/2;
   return v;
 }
+
 
 template<typename T = double>
 class Transformation{
@@ -93,6 +97,40 @@ class Transformation{
   }
 
 
+
+enum class ConnectorType { mass, fix };
+// manages connections to bodies with Springs etc.
+struct Connector{
+  ConnectorType t;
+  size_t num;
+  Vec<3> pos={0,0,0};
+  int body_index; // index of body in system's _bodies that the Connector is relative to; -1 for fixes
+
+  template<typename T>
+  Vec<3, T> absPos(Vector<T> a, Matrix<T> B){
+    if(t == ConnectorType::fix){
+      Vec<3, T> pos_t(pos);
+      return pos_t;
+    }
+    else{
+      Transformation<T> tr;
+      tr.setTranslation(a(0), a(1), a(2));
+      tr.setRotation_from_matrix(B);
+      Vec<3, T> res = tr.apply(pos);
+      return res;
+    }
+  }
+};
+
+struct Spring{
+  double length;
+  double stiffness;
+  Connector a;
+  Connector b;
+};
+
+
+
 class RigidBody_FEM {
   Vector<double> q_;
   Vector<double> phat_;
@@ -118,9 +156,10 @@ public:
   }
 
   RigidBody_FEM()
-        :   mass_function(std::make_shared<LinearFunction>(Matrix(18,18))),
-          q_(18), initialq_(18), phat_(6), initialphat_(6), inertia_(3,3),center_of_mass_{0,0,0}, P_(6, 12){
+        :   mass_function(std::make_shared<LinearFunction>(Matrix(12,12))),
+          q_(12), initialq_(12), phat_(6), initialphat_(6), inertia_(3,3),center_of_mass_{0,0,0}, P_(6, 12){
     q_(1)=1;q_(6)=1;q_(11)=1;
+    inertia()
   }
   
  
@@ -128,9 +167,8 @@ public:
   Vec<3>& center(){return center_of_mass_;}
   Matrix<double>& inertia(){return inertia_;}
 
-  /* 
   void recalcMassMatrix(){
-    mass_function = nullptr;
+    /* mass_function = nullptr;
     //Times 2 because of derivative of x * Ax in x is Ax + A(T)x
     auto diag_function=std::make_shared<LinearFunction+
     >(2*diagonal_block_from_inertia(inertia_,center_of_mass_,mass_));
@@ -141,9 +179,8 @@ public:
     std::shared_ptr<NonlinearFunction> const_zero = std::make_shared<ConstantFunction>(zero);
     mass->addFunction(const_zero);
 
-    mass_function = mass;
+    mass_function = mass; */
   }
-  */
 
   Vector<double>& q(){return q_;}
   Vector<double>& phat(){return phat_;}
@@ -182,10 +219,12 @@ public:
 
 class RBS_FEM{
   std::vector<RigidBody_FEM> _bodies;
+  std::vector<Spring> _springs;
   Vector<double> gravity_ = {0, 0, 0};
 
   public:
   std::vector<RigidBody_FEM>& bodies(){return _bodies;}
+  std::vector<Spring>& springs(){return _springs;}
   Vector<double> & gravity() {return gravity_;}
   void getState(VectorView<double> out){
     for(int i=0; i<_bodies.size(); i++){
@@ -201,11 +240,15 @@ class RBS_FEM{
     }
   }
 
+  // convert (Newton's) equation solution format to rigid body system state format
   Vector<double> xToState(VectorView<double>v ){
     if(v.Size()%eq_per_body)
       throw std::invalid_argument("Vector must be in Equation format");
+
     size_t num_bodies=v.Size()/eq_per_body ;
+    // the Vector in output format:
     Vector<double> res(num_bodies * dim_per_body);
+
     for(size_t i = 0;i<num_bodies; i++){
       Transformation<double> Q;
       Q.setTranslation(v(0),v(1),v(2));
@@ -213,7 +256,7 @@ class RBS_FEM{
       
       res.Range(i*dim_per_body,i*dim_per_body+12)=Q.q_;
 
-      res.Range(i*dim_per_body+12,i*dim_per_body+18)=v.Range(i*eq_per_body+18,i*eq_per_body+24);
+      res.Range(i*dim_per_body+12,i*dim_per_body+18)=v.Range(i*eq_per_body+18,i*eq_per_body+24); // the lagrange parameters
     }
     return res;
   }
@@ -236,16 +279,28 @@ class RBS_FEM{
     return res;
   }
 
+  void saveState(){
+    for (RigidBody_FEM rb: _bodies){
+      rb.saveState();
+    }
+  }
+
+  Connector addBody(RigidBody_FEM& b){
+    _bodies.push_back(b);
+    return Connector{ConnectorType::mass, _bodies.size()-1, Vector<double>(3)};
+  }
+
 };
 
 
+// system of equations for one rigid body
 class EQRigidBody : public NonlinearFunction
 {
-  double h_;
-  Transformation<double> Q_;
-  Vector<double> phatold;
-  RBS_FEM& rbs_;
-  size_t body_index_;
+  double h_; // timestep duration
+  Transformation<double> Q_; // current body transformation
+  Vector<double> phatold; // current momentum
+  RBS_FEM& rbs_; // parent rigid body system
+  size_t body_index_; // index within _bodies of parent rbs_
   public:
   EQRigidBody(Transformation<double> Q, Vector<double> Phat, double h, RBS_FEM& rbs, size_t body_index):
       h_(h), Q_(Q), phatold(Phat), rbs_(rbs), body_index_(body_index) {};
@@ -253,15 +308,39 @@ class EQRigidBody : public NonlinearFunction
   size_t DimF() const  { return 30; }
 
   // potential
-  template<typename T>
-  auto V (Vector<T> a, Matrix<T> B) const{
+  template <typename T>
+  auto V(Vector<T> a, Matrix<T> B) const {
     T potential = 0;
 
-    //Calculate gravitational potential
+    // gravitational potential
     auto t = Transformation<T>();
     t.setRotation_from_matrix(B);
     t.setTranslation(a(0), a(1), a(2));
-    potential -=  rbs_.bodies()[body_index_].mass()*t.apply(rbs_.bodies()[body_index_].center())*rbs_.gravity();
+    potential -= rbs_.bodies()[body_index_].mass() * t.apply(rbs_.bodies()[body_index_].center()) * rbs_.gravity();
+
+    // potential from springs
+    for (Spring spr: rbs_.springs()) {
+      if (spr.a.body_index == body_index_) {
+        RigidBody_FEM& other = rbs_.bodies()[spr.b.body_index];
+        Transformation<double> other_trafo(other.getQ());
+        // the absolute connector positions of the spring's endpoints
+        Vec<3, T> self_attachment_pos = spr.a.absPos(a, B);
+        Vec<3, T> other_attachment_pos = spr.b.absPos(other_trafo.getTranslation(), other_trafo.getRotation());
+
+        // formula 1/2 * k * x^2
+        potential += 0.5 * spr.stiffness * (self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos);
+
+      } else if (spr.b.body_index == body_index_) {
+        RigidBody_FEM& other = rbs_.bodies()[spr.a.body_index];
+        Transformation<double> other_trafo(other.getQ());
+        // the absolute connector positions of the spring's endpoints
+        Vec<3, T> self_attachment_pos = spr.b.absPos(a, B);
+        Vec<3, T> other_attachment_pos = spr.a.absPos(other_trafo.getTranslation(), other_trafo.getRotation());
+
+        // formula 1/2 * k * x^2
+        potential += 0.5 * spr.stiffness * (self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos);
+      }
+    }
 
     return potential;
   }
@@ -407,15 +486,15 @@ class EQRigidBodySystem : public NonlinearFunction
 } */
 
 void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,double,VectorView<double>)> callback = nullptr ){  
-  
+
   Vector<double> state(dim_per_body*rbs.bodies().size());
-  
   Vector<double> x(eq_per_body*rbs.bodies().size());
+
   // copy over current values 
   rbs.getState(state);
-  std::cout << state << std::endl;
+  // std::cout << state << std::endl;
   x = rbs.stateToX(state);
-  std::cout << x<< std::endl;
+  // std::cout << x<< std::endl;
   for (size_t step=0; step < steps; step++){
     std::shared_ptr<EQRigidBodySystem> eq = std::make_shared<EQRigidBodySystem>(rbs, state,rbs.bodies().size(), tend/steps);
     // solve equation
@@ -433,6 +512,14 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
 
     //store data
     rbs.setState(state);
+
+    Vector<double> q = rbs.bodies()[0].q();
+    std::cout<<std::fixed << "C++: "
+                      <<"\t"<< "Translation =" << q(0) << " ," << q(1) << ", "<<", " << q(2) << "} " << std::endl
+                      <<"\t"<< " Rotation: " << q(3) << " ," << q(4) << ", "<<", " << q(5) << "} " << std::endl
+                      <<"\t"<< "           " << q(6) << " ," << q(7) << ", "<<", " << q(8) << "} " << std::endl
+                      <<"\t"<< "           " << q(9) << " ," << q(10) << ", "<<", " << q(11) << "} " << std::endl << std::endl;
+
   }
 
 } 

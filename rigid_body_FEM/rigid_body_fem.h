@@ -45,6 +45,7 @@ auto inv_hat_map(const MatrixExpr<T>& M){
 template<typename T = double>
 class Transformation{
  public:
+  // ordering of q_: Schöberl-style
   Vector<T> q_;
 
   Transformation(Vector<T> q):q_(q){}
@@ -159,8 +160,8 @@ public:
         :   mass_function(std::make_shared<LinearFunction>(Matrix(12,12))),
           q_(12), initialq_(12), phat_(6), initialphat_(6), inertia_(3,3),center_of_mass_{0,0,0}, P_(6, 12){
     q_(1)=1;q_(6)=1;q_(11)=1;
-    inertia()
-  }
+    // set inertia?
+  };
   
  
   double& mass(){return mass_;}
@@ -241,7 +242,10 @@ class RBS_FEM{
   }
 
   // convert (Newton's) equation solution format to rigid body system state format
-  Vector<double> xToState(VectorView<double>v ){
+  // output format: q, phat, q, phat, q, phat, ... for the different bodies in _bodies
+  // ordering of a single q in output: as stored by Transformation
+  // input format: see EQRigidBody::Evaluate
+  Vector<double> xToState(VectorView<double> v){
     if(v.Size()%eq_per_body)
       throw std::invalid_argument("Vector must be in Equation format");
 
@@ -510,15 +514,11 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
 
     state = rbs.xToState(x);
 
-    //store data
+    //store data into different bodies
     rbs.setState(state);
 
-    Vector<double> q = rbs.bodies()[0].q();
-    std::cout<<std::fixed << "C++: "
-                      <<"\t"<< "Translation =" << q(0) << " ," << q(1) << ", "<<", " << q(2) << "} " << std::endl
-                      <<"\t"<< " Rotation: " << q(3) << " ," << q(4) << ", "<<", " << q(5) << "} " << std::endl
-                      <<"\t"<< "           " << q(6) << " ," << q(7) << ", "<<", " << q(8) << "} " << std::endl
-                      <<"\t"<< "           " << q(9) << " ," << q(10) << ", "<<", " << q(11) << "} " << std::endl << std::endl;
+    /* Transformation<double> t = rbs.bodies()[0].q();
+    std::cout << t << std::endl; */
 
   }
 

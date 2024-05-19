@@ -6,6 +6,12 @@
 #include "../src/autodiffdiff.h"
 #include <cmath>
 
+// USES_PYBIND comes from CMakeLists.txt (target_compile_definitions)
+#ifdef PYBIND11_MODULE
+#include <pybind11/pybind11.h>
+namespace py = pybind11;
+#endif
+
 
 constexpr size_t dim_per_body = 18;
 constexpr size_t eq_per_body = 30;
@@ -146,6 +152,11 @@ class RigidBody_FEM {
   double mass_=1;
   std::shared_ptr<NonlinearFunction> mass_function;
 
+  #ifdef PYBIND11_MODULE
+  py::list vertices_;
+  py::list normals_;
+  #endif
+
 public:
 
   template<typename T>
@@ -169,6 +180,11 @@ public:
   double& mass(){return mass_;}
   Vec<3>& center(){return center_of_mass_;}
   Matrix<double>& inertia(){return inertia_;}
+
+  #ifdef PYBIND11_MODULE
+  py::list& vertices(){return vertices_;}
+  py::list& normals(){return normals_;}
+  #endif
 
   void recalcMassMatrix(){
     /* mass_function = nullptr;
@@ -208,14 +224,13 @@ public:
   }
 
   Vec<3> absolutePosOf(Vec<3> relative_pos){
-    std::cout << getQ() << std::endl;
+    // std::cout << getQ() << std::endl;
     return getQ().apply(relative_pos);
   }
 
   Transformation<> getQ(){return q_;}
   Vector<double> getPhat(){return phat_;}
 
-  
 };
 
 
@@ -291,14 +306,19 @@ class RBS_FEM{
   }
 
   void saveState(){
-    for (RigidBody_FEM rb: _bodies){
+    for (auto& rb: _bodies){
       rb.saveState();
     }
   }
 
+  void reset(){
+    for(auto& body: bodies())
+      body.reset();
+  }
+
   Connector addBody(RigidBody_FEM& b){
     _bodies.push_back(b);
-    std::cout << _bodies.size()-1 << std::endl;
+    // std::cout << _bodies.size()-1 << std::endl;
     return Connector{ConnectorType::mass, Vector<double>(3), _bodies.size()-1};
   }
   Vec<3> connectorPos(Connector c){
@@ -308,13 +328,17 @@ class RBS_FEM{
     Matrix<double> B = ;
     return c.absPos(a, B); */
     Vec<3> relpos = c.pos;
-    // std::cout << relpos << std::endl << _bodies[c.body_index].absolutePosOf(relpos) << std::endl;
-    std::cout << c.body_index << std::endl;
+    // std::cout << "cp" << relpos << std::endl << _bodies[c.body_index].absolutePosOf(relpos) << std::endl;
+    // std::cout << c.body_index << std::endl;
     return _bodies[c.body_index].absolutePosOf(relpos);
   }
 
   void addSpring(Spring s){
     _springs.push_back(s);
+  }
+
+  Connector addFix(){
+    return Connector{ConnectorType::fix, {0,0,0}, 0};
   }
 
 };

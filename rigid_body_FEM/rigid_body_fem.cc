@@ -46,4 +46,8 @@ int main()
                       <<"\t"<< "           " << q(9+30) << " ," << q(10+30) << ", "<<", " << q(11+30) << "} " << std::endl << std::endl; }                   
                    );
   std::cout << "}";
+
+  #ifdef FOO
+  std::cout << FOO << std::endl;
+  #endif
 }

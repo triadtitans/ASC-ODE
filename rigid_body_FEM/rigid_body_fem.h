@@ -4,6 +4,7 @@
 #include <vector.h>
 #include <ode.h>
 #include "../src/autodiffdiff.h"
+#include <cmath>
 
 
 constexpr size_t dim_per_body = 18;
@@ -103,9 +104,9 @@ enum class ConnectorType { mass, fix };
 // manages connections to bodies with Springs etc.
 struct Connector{
   ConnectorType t;
-  size_t num;
+  // size_t num;
   Vec<3> pos={0,0,0};
-  int body_index; // index of body in system's _bodies that the Connector is relative to; -1 for fixes
+  size_t body_index; // index of body in system's _bodies that the Connector is relative to; irrelevant for fixes
 
   template<typename T>
   Vec<3, T> absPos(Vector<T> a, Matrix<T> B){
@@ -144,6 +145,7 @@ class RigidBody_FEM {
   Matrix<double> inertia_;
   double mass_=1;
   std::shared_ptr<NonlinearFunction> mass_function;
+
 public:
 
   template<typename T>
@@ -206,6 +208,7 @@ public:
   }
 
   Vec<3> absolutePosOf(Vec<3> relative_pos){
+    std::cout << getQ() << std::endl;
     return getQ().apply(relative_pos);
   }
 
@@ -227,13 +230,16 @@ class RBS_FEM{
   std::vector<RigidBody_FEM>& bodies(){return _bodies;}
   std::vector<Spring>& springs(){return _springs;}
   Vector<double> & gravity() {return gravity_;}
+  int numBodies(){return _bodies.size();}
+  int numSprings(){return _springs.size();}
+  // int numBeams(){return _beams.size();}
+
   void getState(VectorView<double> out){
     for(int i=0; i<_bodies.size(); i++){
       out.Range(i*dim_per_body,i*dim_per_body+12)=_bodies[i].q();
       out.Range(i*dim_per_body+12, (i+1)*dim_per_body)=_bodies[i].phat();
     }
   }
-
   void setState(VectorView<double> in){
     for(int i=0; i<_bodies.size(); i++){
       _bodies[i].q()=in.Range(i*dim_per_body,i*dim_per_body+12);
@@ -245,22 +251,23 @@ class RBS_FEM{
   // output format: q, phat, q, phat, q, phat, ... for the different bodies in _bodies
   // ordering of a single q in output: as stored by Transformation
   // input format: see EQRigidBody::Evaluate
-  Vector<double> xToState(VectorView<double> v){
-    if(v.Size()%eq_per_body)
+  Vector<double> xToState(VectorView<double> x){
+    if(x.Size()%eq_per_body)
       throw std::invalid_argument("Vector must be in Equation format");
 
-    size_t num_bodies=v.Size()/eq_per_body ;
+    size_t num_bodies=x.Size()/eq_per_body ;
     // the Vector in output format:
     Vector<double> res(num_bodies * dim_per_body);
 
     for(size_t i = 0;i<num_bodies; i++){
-      Transformation<double> Q;
-      Q.setTranslation(v(0),v(1),v(2));
-      Q.setRotation_from_matrix(AsMatrix(v.Range(3, 12), 3, 3));
+      // make Transformation object from equation solution format
+      Transformation<double> T;
+      T.setTranslation(x(i*eq_per_body + 0), x(i*eq_per_body + 1), x(i*eq_per_body + 2));
+      T.setRotation_from_matrix(AsMatrix(x.Range(i*eq_per_body + 3, i*eq_per_body + 12), 3, 3));
       
-      res.Range(i*dim_per_body,i*dim_per_body+12)=Q.q_;
-
-      res.Range(i*dim_per_body+12,i*dim_per_body+18)=v.Range(i*eq_per_body+18,i*eq_per_body+24); // the lagrange parameters
+      // store transformation data into array
+      res.Range(i*dim_per_body,i*dim_per_body+12)=T.q_;
+      res.Range(i*dim_per_body+12,i*dim_per_body+18)=x.Range(i*eq_per_body+18,i*eq_per_body+24);
     }
     return res;
   }
@@ -291,7 +298,23 @@ class RBS_FEM{
 
   Connector addBody(RigidBody_FEM& b){
     _bodies.push_back(b);
-    return Connector{ConnectorType::mass, _bodies.size()-1, Vector<double>(3)};
+    std::cout << _bodies.size()-1 << std::endl;
+    return Connector{ConnectorType::mass, Vector<double>(3), _bodies.size()-1};
+  }
+  Vec<3> connectorPos(Connector c){
+    /* Vector<double> state(18);
+    getState(state); */
+    /* Vector<double> a = ;
+    Matrix<double> B = ;
+    return c.absPos(a, B); */
+    Vec<3> relpos = c.pos;
+    // std::cout << relpos << std::endl << _bodies[c.body_index].absolutePosOf(relpos) << std::endl;
+    std::cout << c.body_index << std::endl;
+    return _bodies[c.body_index].absolutePosOf(relpos);
+  }
+
+  void addSpring(Spring s){
+    _springs.push_back(s);
   }
 
 };
@@ -324,25 +347,27 @@ class EQRigidBody : public NonlinearFunction
 
     // potential from springs
     for (Spring spr: rbs_.springs()) {
-      if (spr.a.body_index == body_index_) {
+      if (spr.a.t == ConnectorType::mass && spr.a.body_index == body_index_) {
         RigidBody_FEM& other = rbs_.bodies()[spr.b.body_index];
         Transformation<double> other_trafo(other.getQ());
         // the absolute connector positions of the spring's endpoints
         Vec<3, T> self_attachment_pos = spr.a.absPos(a, B);
         Vec<3, T> other_attachment_pos = spr.b.absPos(other_trafo.getTranslation(), other_trafo.getRotation());
+        T current_len = sqrt((self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos)); // actually misses sqrt
 
         // formula 1/2 * k * x^2
-        potential += 0.5 * spr.stiffness * (self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos);
+        potential -= 0.5 * spr.stiffness * (spr.length - current_len) * (spr.length - current_len);
 
-      } else if (spr.b.body_index == body_index_) {
+      } else if (spr.b.t == ConnectorType::mass && spr.b.body_index == body_index_) {
         RigidBody_FEM& other = rbs_.bodies()[spr.a.body_index];
         Transformation<double> other_trafo(other.getQ());
         // the absolute connector positions of the spring's endpoints
         Vec<3, T> self_attachment_pos = spr.b.absPos(a, B);
         Vec<3, T> other_attachment_pos = spr.a.absPos(other_trafo.getTranslation(), other_trafo.getRotation());
+        T current_len = sqrt((self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos)); // actually misses sqrt
 
         // formula 1/2 * k * x^2
-        potential += 0.5 * spr.stiffness * (self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos);
+        potential -= 0.5 * spr.stiffness * (spr.length - current_len) * (spr.length - current_len);
       }
     }
 
@@ -510,14 +535,18 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
     //eq->EvaluateDeriv(x,df);
     //std::cout << test<< std::endl;
     //std::cout << df << std::endl;
+    // std::cout << "before newton" << std::endl;
     NewtonSolver(eq, x, 1e-10, 10, callback);
 
     state = rbs.xToState(x);
 
+    // std::cout << x << "\n" << std::endl;
+    // std::cout << state << std::endl;
+
     //store data into different bodies
     rbs.setState(state);
 
-    /* Transformation<double> t = rbs.bodies()[0].q();
+    /* Transformation<double> t = rbs.bodies()[1].q();
     std::cout << t << std::endl; */
 
   }

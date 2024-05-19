@@ -3,8 +3,8 @@
 
 int main()
 {
-  double tend = 5*60;
-  double steps = 100*60;
+  double tend = 0.25;
+  double steps = 5;
   Vector<double> q ( 12 );
   q(0)=0; q(4)=0; q(8)=0; 
 
@@ -20,6 +20,7 @@ int main()
   Matrix<double> inertia_matrix(3, 3);
   MatrixView<double> inertia_v (inertia_matrix);
   RigidBody_FEM rb(q,phat,1,Vec<3>{0,0,0},inertia_v);
+  q(0) = 2; q(4) = 2; q(8) = 2;
   RigidBody_FEM rb2(q,phat,1,Vec<3>{0,0,0},inertia_v);
   /* RigidBody_FEM rb;
   rb.setPhat_v(3, 0.01);
@@ -32,13 +33,13 @@ int main()
   rbs.bodies().push_back(rb);
   rbs.bodies().push_back(rb2);
 
-  simulate(rbs,tend, steps , [](int i, double t, VectorView<double> q) { 
-                    std::cout<<std::fixed << "Body 1: " // << "Body1 newton-iteration: " << i << " newton-error: " << t << std::endl
+  simulate(rbs,tend, steps, [](int i, double t, VectorView<double> q) { 
+                    std::cout<<std::fixed << "Body1 newton-iteration: " << i << " newton-error: " << t << std::endl
                       <<"\t"<< "Translation =" << q(0) << " ," << q(1) << ", "<<", " << q(2) << "} " << std::endl
                       <<"\t"<< " Rotation: " << q(3) << " ," << q(4) << ", "<<", " << q(5) << "} " << std::endl
                       <<"\t"<< "           " << q(6) << " ," << q(7) << ", "<<", " << q(8) << "} " << std::endl
                       <<"\t"<< "           " << q(9) << " ," << q(10) << ", "<<", " << q(11) << "} " << std::endl << std::endl
-                      << "Body 2: "// << "Body2 newton-iteration: " << i << " newton-error: " << t << std::endl
+                      << "Body2 newton-iteration: " << i << " newton-error: " << t << std::endl
                       <<"\t"<< "Translation =" << q(0+30) << " ," << q(1+30) << ", "<<", " << q(2+30) << "} " << std::endl
                       <<"\t"<< " Rotation: " << q(3+30) << " ," << q(4+30) << ", "<<", " << q(5+30) << "} " << std::endl
                       <<"\t"<< "           " << q(6+30) << " ," << q(7+30) << ", "<<", " << q(8+30) << "} " << std::endl

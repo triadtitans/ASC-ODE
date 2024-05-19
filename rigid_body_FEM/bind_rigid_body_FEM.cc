@@ -41,9 +41,17 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
     py::class_<Connector>(rbd,"Connector")
       .def_property("pos",[](Connector& c){return py::make_tuple(c.pos(0),c.pos(1),c.pos(2));},
                           [](Connector& c, std::array<double,3> t){c.pos(0)=t[0];c.pos(1)=t[1];c.pos(2)=t[2];})
+      .def_property_readonly("body_index",[](Connector& c){return c.body_index;})
       .def_property_readonly("type",[](Connector& c){return c.t == ConnectorType::mass ? 0 : 1 ;});
+    
+    py::class_<Spring>(rbd,"Spring")
+      .def(py::init<>([](Connector a, Connector b, double length, double stiffness){return Spring{length,stiffness,a,b};})) // stiffness should be positive!
+      .def_property_readonly("length", [](Spring& b){return b.length;})
+      .def_property_readonly("stiffness", [](Spring& b){return b.length;})
+      .def_property_readonly("connectorA", [](Spring& b){return b.a;})
+      .def_property_readonly("connectorB",[](Spring& b){return b.b;});
 
-    py::class_<RigidBody_FEM> (rbd, "RigidBody_FEM")
+    py::class_<RigidBody_FEM> (rbd, "RigidBody_FEM", py::dynamic_attr())
       .def(py::init<>())
       /*.def("__str__", [](RigidBody & rb) {
         std::stringstream sstr;
@@ -90,7 +98,7 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
       .def("saveState", &RBS_FEM::saveState)
       .def("addBody",&RBS_FEM::addBody)
       //.def("addBeam",&RBS_FEM::addBeam)
-      //.def("addSpring",&RBS_FEM::addSpring)
+      .def("addSpring",&RBS_FEM::addSpring)
       //.def("addFix",&RBS_FEM::addFix)
       //.def("simulate", [](RBS_FEM& sys,double tend, double steps){sys.simulate(tend,steps);})
       .def("bodies", &RBS_FEM::bodies)
@@ -102,12 +110,12 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
         },
         [](RBS_FEM& r, std::array<double,3> t){
           for (int i = 0;i<3;i++) r.gravity()(i)=t[i];
-        });
+        })
       //.def("beams", &RBS_FEM::beams)
-      //.def("springs", &RBS_FEM::springs)
+      .def("springs", &RBS_FEM::springs)
       //.def("saveState", &RBS_FEM::saveState)
       //.def("reset", &RBS_FEM::reset)
-      //.def("connectorPos", [](RBS_FEM &r, Connector c){ auto v= r.connectorPos(c); return py::make_tuple(v(0),v(1),v(2));});
+      .def("connectorPos", [](RBS_FEM &r, Connector c){ auto v = r.connectorPos(c); return py::make_tuple(v(0),v(1),v(2));});
 
 
     rbd.def("simulate",[](RBS_FEM& rbs, double tend, double steps) {simulate(rbs, tend, steps);});

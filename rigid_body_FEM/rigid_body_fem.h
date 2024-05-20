@@ -115,7 +115,7 @@ struct Connector{
   size_t body_index; // index of body in system's _bodies that the Connector is relative to; irrelevant for fixes
 
   template<typename T>
-  Vec<3, T> absPos(Vector<T> a, Matrix<T> B){
+  Vec<3, T> absPos(Vector<T> a, Matrix<T> B) const{
     if(t == ConnectorType::fix){
       Vec<3, T> pos_t(pos);
       return pos_t;
@@ -327,10 +327,18 @@ class RBS_FEM{
     /* Vector<double> a = ;
     Matrix<double> B = ;
     return c.absPos(a, B); */
-    Vec<3> relpos = c.pos;
+    Vec<3> pos;
+    if (c.t == ConnectorType::mass){
+      // c.pos is relative position
+      return _bodies[c.body_index].absolutePosOf(c.pos);
+    }
+    else if (c.t == ConnectorType::fix){
+      // c.pos is already absolute
+      return c.pos;
+    }
+    else throw invalid_argument("unknown ConnectorType");
     // std::cout << "cp" << relpos << std::endl << _bodies[c.body_index].absolutePosOf(relpos) << std::endl;
     // std::cout << c.body_index << std::endl;
-    return _bodies[c.body_index].absolutePosOf(relpos);
   }
 
   void addSpring(Spring s){
@@ -358,6 +366,31 @@ class EQRigidBody : public NonlinearFunction
   size_t DimX() const  { return 30; }
   size_t DimF() const  { return 30; }
 
+  // helper function to calculate spring potential of spring with positive stiffness
+  template<typename T>
+  T spring_potential(const Spring& spring, const Connector& own_conn, const Connector& other_conn, const Vector<T>& a,  const Matrix<T>& B) const{
+    // a and B are the transformation of the object this EQRigidBody belongs to
+
+    // the absolute connector positions of the spring's endpoints
+    Vec<3, T> self_attachment_pos = own_conn.absPos(a, B);
+    Vec<3, T> other_attachment_pos;
+
+    if (other_conn.t == ConnectorType::mass){
+      RigidBody_FEM& other = rbs_.bodies()[other_conn.body_index];
+      Transformation<double> other_trafo(other.getQ());
+      other_attachment_pos = other_conn.absPos(other_trafo.getTranslation(), other_trafo.getRotation());
+    }
+    else if (other_conn.t == ConnectorType::fix){
+      other_attachment_pos = other_conn.pos;
+    }
+    else throw invalid_argument("unknown ConnectorType");
+
+    T current_len = sqrt((self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos));
+
+    // formula 1/2 * k * x^2
+    return -0.5 * spring.stiffness * (spring.length - current_len) * (spring.length - current_len);
+  }
+
   // potential
   template <typename T>
   auto V(Vector<T> a, Matrix<T> B) const {
@@ -370,14 +403,14 @@ class EQRigidBody : public NonlinearFunction
     potential -= rbs_.bodies()[body_index_].mass() * t.apply(rbs_.bodies()[body_index_].center()) * rbs_.gravity();
 
     // potential from springs
-    for (Spring spr: rbs_.springs()) {
+    /* for (Spring spr: rbs_.springs()) {
       if (spr.a.t == ConnectorType::mass && spr.a.body_index == body_index_) {
         RigidBody_FEM& other = rbs_.bodies()[spr.b.body_index];
         Transformation<double> other_trafo(other.getQ());
         // the absolute connector positions of the spring's endpoints
         Vec<3, T> self_attachment_pos = spr.a.absPos(a, B);
-        Vec<3, T> other_attachment_pos = spr.b.absPos(other_trafo.getTranslation(), other_trafo.getRotation());
-        T current_len = sqrt((self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos)); // actually misses sqrt
+        Vec<3, T> other_attachment_pos = spr.b.absPos(other_trafo.getTranslation(), other_trafo.getRotation()); // if other is a fix, the transformation gets ignored
+        T current_len = sqrt((self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos));
 
         // formula 1/2 * k * x^2
         potential -= 0.5 * spr.stiffness * (spr.length - current_len) * (spr.length - current_len);
@@ -388,10 +421,19 @@ class EQRigidBody : public NonlinearFunction
         // the absolute connector positions of the spring's endpoints
         Vec<3, T> self_attachment_pos = spr.b.absPos(a, B);
         Vec<3, T> other_attachment_pos = spr.a.absPos(other_trafo.getTranslation(), other_trafo.getRotation());
-        T current_len = sqrt((self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos)); // actually misses sqrt
+        T current_len = sqrt((self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos));
 
         // formula 1/2 * k * x^2
         potential -= 0.5 * spr.stiffness * (spr.length - current_len) * (spr.length - current_len);
+      }
+    } */
+    // potential from springs
+    for (Spring spr: rbs_.springs()) {
+      if (spr.a.t == ConnectorType::mass && spr.a.body_index == body_index_) {        
+        potential += spring_potential<T>(spr, spr.a, spr.b, a, B);
+
+      } else if (spr.b.t == ConnectorType::mass && spr.b.body_index == body_index_) {
+        potential += spring_potential<T>(spr, spr.b, spr.a, a, B);
       }
     }
 

@@ -45,9 +45,9 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
       .def_property_readonly("type",[](Connector& c){return c.t == ConnectorType::mass ? 0 : 1 ;});
     
     py::class_<Spring>(rbd,"Spring")
-      .def(py::init<>([](Connector a, Connector b, double length, double stiffness){std::cout << a.pos << b.pos << std::endl; return Spring{length,stiffness,a,b};})) // stiffness should be positive!
+      .def(py::init<>([](Connector a, Connector b, double length, double stiffness){return Spring{length,stiffness,a,b};})) // stiffness should be positive! (-k)
       .def_property_readonly("length", [](Spring& b){return b.length;})
-      .def_property_readonly("stiffness", [](Spring& b){return b.length;})
+      .def_property_readonly("stiffness", [](Spring& b){return b.length;}) // stiffness should be positive! (-k)
       .def_property_readonly("connectorA", [](Spring& b){return b.a;})
       .def_property_readonly("connectorB",[](Spring& b){return b.b;});
 

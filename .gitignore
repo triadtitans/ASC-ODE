@@ -38,3 +38,4 @@ rbd_build/**
 dist/** 
 
 .ipynb_checkpoints
+.pyodide-xbuildenv

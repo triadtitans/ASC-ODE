@@ -1,37 +1,45 @@
-cmake_minimum_required(VERSION 3.20)
-project(ASC_ode)
+cmake_minimum_required(VERSION 3.15...3.27)
+project(ASC-ode)
 
 set (CMAKE_CXX_STANDARD 17)
 
-
-# use linalg from NGSolve, otherwise comment it out
-#find_package(NGSolve CONFIG REQUIRED
-#  HINTS /usr $ENV{NETGENDIR}/.. /tmp/inst/usr /opt/netgen/ /Applications/Netgen.app/Contents/Resources/CMake C:/netgen
-#)
-
-set (CXXFLAGS "-g -O0")
 include_directories(src)
-add_subdirectory (src)
-
 include_directories(BLA/src)
-
 include_directories(BLA/HPC/src)
 
-add_executable (test_ode demos/test_ode.cc)
-target_link_libraries (test_ode PUBLIC)
+# if invoked using scikit-build-core
+if(DEFINED SKBUILD)
+    find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
+    find_package(pybind11 CONFIG REQUIRED)
 
-add_executable (test_newmark demos/test_newmark.cc)
-target_link_libraries (test_newmark PUBLIC)
+    python_add_library(rigid_body MODULE rigid_body/bind_rigid_body.cc WITH_SOABI)
+    target_link_libraries(rigid_body PRIVATE pybind11::headers)
 
-add_executable (test_alpha demos/test_alpha.cc)
-target_link_libraries (test_alpha PUBLIC)
+    target_compile_definitions(rigid_body PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
-add_executable (test_autodiff demos/test_autodiff.cc)
-target_link_libraries (test_autodiff PUBLIC)
+    install(TARGETS rigid_body DESTINATION lib_rigid_body)
 
-add_executable (test_cube demos/test_cube.cc)
-target_link_libraries (test_cube PUBLIC)
+else()
+    set (CXXFLAGS "-g -O0")
 
-add_subdirectory (mass_spring)
-add_subdirectory (rigid_body)
-add_subdirectory (rigid_body_FEM)
+    add_subdirectory (src)
+
+    add_executable (test_ode demos/test_ode.cc)
+    target_link_libraries (test_ode PUBLIC)
+
+    add_executable (test_newmark demos/test_newmark.cc)
+    target_link_libraries (test_newmark PUBLIC)
+
+    add_executable (test_alpha demos/test_alpha.cc)
+    target_link_libraries (test_alpha PUBLIC)
+
+    add_executable (test_autodiff demos/test_autodiff.cc)
+    target_link_libraries (test_autodiff PUBLIC)
+
+    add_executable (test_cube demos/test_cube.cc)
+    target_link_libraries (test_cube PUBLIC)
+
+    add_subdirectory (mass_spring)
+    add_subdirectory (rigid_body)
+    add_subdirectory (rigid_body_FEM)
+endif()

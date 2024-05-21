@@ -1,0 +1,16 @@
+[build-system]
+requires = ["scikit-build-core>=0.3.3", "pybind11"]
+build-backend = "scikit_build_core.build"
+
+
+[project]
+name = "lib_rigid_body"
+version="0.0.1"
+description="rigid body mechanics implementation"
+authors = [
+  { name = "J. Schöberl, T. Leichtfried, L. Gauler, N. Hammer" },
+]
+requires-python = "==3.11.9"
+
+[tool.scikit-build]
+wheel.expand-macos-universal-tags = true

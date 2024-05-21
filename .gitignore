@@ -34,8 +34,7 @@ ascpy/**
 venv/**
 venv~/**
 build/**
-rbd_build/** 
-dist/** 
+rbd_build/**  
 
 .ipynb_checkpoints
 .pyodide-xbuildenv

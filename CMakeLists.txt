@@ -12,12 +12,20 @@ if(DEFINED SKBUILD)
     find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
     find_package(pybind11 CONFIG REQUIRED)
 
+    # rigid_body
     python_add_library(rigid_body MODULE rigid_body/bind_rigid_body.cc WITH_SOABI)
     target_link_libraries(rigid_body PRIVATE pybind11::headers)
 
     target_compile_definitions(rigid_body PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
-    install(TARGETS rigid_body DESTINATION lib_rigid_body)
+    #rigid_body_fem
+    python_add_library(rigid_body_FEM MODULE rigid_body_FEM/bind_rigid_body_FEM.cc WITH_SOABI)
+    target_link_libraries(rigid_body_FEM PRIVATE pybind11::headers)
+
+    target_compile_definitions(rigid_body_FEM PRIVATE VERSION_INFO=${PROJECT_VERSION})
+
+
+    install(TARGETS rigid_body rigid_body_FEM DESTINATION lib_rigid_body)
 
 else()
     set (CXXFLAGS "-g -O0")

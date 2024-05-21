@@ -127,7 +127,7 @@ public:
     SolveODE_Newmark (tend, steps, state, dstate, dlagrange, mass, callback);
     SetState(state,dstate);
     
-  } 
+  }
 };
 
 class RhsRBSystem : public NonlinearFunction

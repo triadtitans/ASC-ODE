@@ -23,7 +23,7 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
     // the main bindings:
     rbd.doc() = "rigid body FEM simulator";       
        
-    py::class_<Transformation<>>(rbd,"Transformation")
+    py::class_<Transformation<>>(rbd,"Transformation", py::module_local())
       .def(py::init<>())
       .def("__str__", [](Transformation<> & t) {
         std::stringstream sstr;
@@ -38,13 +38,13 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
         return py::make_tuple(t.q_(1), t.q_(5), t.q_(9), 0, t.q_(2), t.q_(6), t.q_(10), 0, t.q_(3), t.q_(7), t.q_(11), 0, t.q_(0), t.q_(4), t.q_(8), 1);
       });
 
-    py::class_<Connector>(rbd,"Connector")
+    py::class_<Connector>(rbd,"Connector", py::module_local())
       .def_property("pos",[](Connector& c){return py::make_tuple(c.pos(0),c.pos(1),c.pos(2));},
                           [](Connector& c, std::array<double,3> t){c.pos(0)=t[0];c.pos(1)=t[1];c.pos(2)=t[2];})
       .def_property_readonly("body_index",[](Connector& c){return c.body_index;})
       .def_property_readonly("type",[](Connector& c){return c.t == ConnectorType::mass ? 0 : 1 ;});
     
-    py::class_<Spring>(rbd,"Spring")
+    py::class_<Spring>(rbd,"Spring", py::module_local())
       .def(py::init<>([](Connector a, Connector b, double length, double stiffness){return Spring{length,stiffness,a,b};})) // stiffness should be positive! (-k)
       .def_property_readonly("length", [](Spring& b){return b.length;})
       .def_property_readonly("stiffness", [](Spring& b){return b.length;}) // stiffness should be positive! (-k)
@@ -101,7 +101,16 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
       .def("recalcMassMatrix", &RigidBody_FEM::recalcMassMatrix)
       .def("saveState", &RigidBody_FEM::saveState)
       .def("reset", &RigidBody_FEM::reset) 
-      .def("setPhat", &RigidBody_FEM::setPhat_v);
+      .def("setPhat", &RigidBody_FEM::setPhat_v)
+      .def(py::pickle(
+          [](RigidBody_FEM& rbd){ // __getstate__
+              return rbd.to_pickle();
+          },
+          [](py::tuple data){ // __setstate__
+            RigidBody_FEM rbd;
+            rbd.load_pickle(data);
+            return rbd;
+          }));
       
     //rbd.def("mass_matrix_from_inertia", &mass_matrix_from_inertia, "generates the a mass matrix from given inertia, center and mass",
             //py::arg("inertia_matrix"), py::arg("center_of_mass"), py::arg("mass"));

@@ -5,6 +5,11 @@
 #include <ode.h>
 #include "../src/autodiffdiff.h"
 
+#ifdef PYBIND11_MODULE
+#include <pybind11/pybind11.h>
+namespace py = pybind11;
+#endif
+
 constexpr size_t dim_per_body = 18;
 
 class RhsRigidBody;
@@ -109,6 +114,12 @@ class RigidBody {
   Matrix<double> inertia_;
   double mass_=1;
   std::shared_ptr<NonlinearFunction> mass_function;
+
+  #ifdef PYBIND11_MODULE
+  py::list vertices_;
+  py::list normals_;
+  #endif
+
 public:
   template <typename T>
   /*RigidBody(MatrixExpr<T>& m,Vector<double> q,Vector<double> dq,Vector<double> ddq,Vec<3> center_of_mass_,double mass=1)
@@ -188,7 +199,68 @@ public:
     std::shared_ptr<Derivative> dlagrange = std::make_shared<Derivative>(rhs);
    
     SolveODE_Alpha (tend, steps, 0.8, q_, dq_, ddq_, dlagrange, mass_function, callback);
-  } 
+  }
+
+  #ifdef PYBIND11_MODULE
+  py::list& vertices(){return vertices_;}
+  py::list& normals(){return normals_;}
+
+  py::tuple to_pickle(){ // __getstate__
+    auto vectorToTuple = [](Vector<double>& v){
+      return py::make_tuple(v.Size(),
+                            py::bytes((char*)(void*)&v(0), v.Size()*sizeof(double)));
+    };
+    auto matrixToTuple = [](Matrix<double>& m){
+      return py::make_tuple(m.Height(), m.Width(),
+                            py::bytes((char*)(void*)&m(0,0), m.Height()*m.Width()*sizeof(double)));
+    };
+    py::tuple t_q = vectorToTuple(q_);
+    py::tuple t_dq = vectorToTuple(dq_);
+    py::tuple t_ddq = vectorToTuple(ddq_);
+    py::tuple t_center_of_mass = py::make_tuple(center_of_mass_(0),center_of_mass_(1),center_of_mass_(2));
+    py::tuple t_inertia = matrixToTuple(inertia_);
+
+    return py::make_tuple(t_q, t_dq, t_ddq, t_center_of_mass, t_inertia, mass_, vertices_, normals_);
+  }
+  void load_pickle(py::tuple data){ // __setstate__
+    if (data.size() != 8) throw invalid_argument("invalid tuple length for pickled object");
+
+    auto tupleToVector = [](py::tuple t){ // __setstate__
+      if (t.size() != 2)
+        throw std::runtime_error("should be a 2-tuple!");
+
+      Vector<double> v(t[0].cast<size_t>());
+      py::bytes mem = t[1].cast<py::bytes>();
+      std::memcpy(&v(0), PYBIND11_BYTES_AS_STRING(mem.ptr()), v.Size()*sizeof(double));
+      return v;
+    };
+    auto tupleToMatrix = [](py::tuple t){ // __setstate__
+      if (t.size() != 3)
+        throw std::runtime_error("should be a 3-tuple!");
+
+      Matrix<double> m(t[0].cast<size_t>(),t[1].cast<size_t>());
+      py::bytes mem = t[2].cast<py::bytes>();
+      std::memcpy(&m(0,0), PYBIND11_BYTES_AS_STRING(mem.ptr()), m.Height()*m.Width()*sizeof(double));
+      return m;
+    };
+
+    q_ = tupleToVector(data[0]);
+    dq_ = tupleToVector(data[1]);
+    ddq_ = tupleToVector(data[2]);
+    initialq_ = tupleToVector(data[0]);
+    initialdq_ = tupleToVector(data[1]);
+    initialddq_ = tupleToVector(data[2]);
+    py::tuple ecom = data[3]; // entry of center of mass
+    center_of_mass_(0) = (ecom[0]).cast<double>();
+    center_of_mass_(1) = (ecom[1]).cast<double>();
+    center_of_mass_(2) = (ecom[2]).cast<double>();
+    inertia_ = tupleToMatrix(data[4]);
+    mass_ = data[5].cast<double>();
+    recalcMassMatrix();
+    vertices_ = data[6];
+    normals_ = data[7];
+  }
+  #endif
 };
 
 class RhsRigidBody : public NonlinearFunction

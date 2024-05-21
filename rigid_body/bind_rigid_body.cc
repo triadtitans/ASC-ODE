@@ -23,7 +23,7 @@ PYBIND11_MODULE(rigid_body, rbd) {
     // the main bindings:
     rbd.doc() = "rigid body simulator";       
        
-    py::class_<Transformation<>>(rbd,"Transformation")
+    py::class_<Transformation<>>(rbd,"Transformation", py::module_local())
       .def(py::init<>())
       .def("__str__", [](Transformation<> & t) {
         std::stringstream sstr;
@@ -47,18 +47,18 @@ PYBIND11_MODULE(rigid_body, rbd) {
     // MASS_CUBE = MatrixView<double>(18, 18, mass_matrix_data);
     // rbd.attr("MASS_CUBE") = MASS_CUBE;
 
-    py::class_<Connector>(rbd,"Connector")
+    py::class_<Connector>(rbd,"Connector", py::module_local())
       .def_property("pos",[](Connector& c){return py::make_tuple(c.pos(0),c.pos(1),c.pos(2));},
                           [](Connector& c, std::array<double,3> t){c.pos(0)=t[0];c.pos(1)=t[1];c.pos(2)=t[2];})
       .def_property_readonly("type",[](Connector& c){return c.t == ConnectorType::mass ? 0 : 1 ;});
 
-    py::class_<Beam>(rbd,"Beam")
+    py::class_<Beam>(rbd,"Beam", py::module_local())
       .def(py::init<>([](Connector a, Connector b, double length){return Beam{length,a,b};}))
       .def_property_readonly("length", [](Beam& b){return b.length;})
       .def_property_readonly("connectorA", [](Beam& b){return b.a;})
       .def_property_readonly("connectorB",[](Beam& b){return b.b;});
 
-    py::class_<Spring>(rbd,"Spring")
+    py::class_<Spring>(rbd,"Spring", py::module_local())
       .def(py::init<>([](Connector a, Connector b, double length, double stiffness){return Spring{length,stiffness,a,b};}))
       .def_property_readonly("length", [](Spring& b){return b.length;})
       .def_property_readonly("stiffness", [](Spring& b){return b.length;})
@@ -104,7 +104,18 @@ PYBIND11_MODULE(rigid_body, rbd) {
       .def("recalcMassMatrix", &RigidBody::recalcMassMatrix)
       .def("saveState", &RigidBody::saveState)
       .def("reset", &RigidBody::reset)  
-      .def("simulate",[](RigidBody& r, double tend,double steps) {r.simulate(tend,steps);});
+      .def("simulate",[](RigidBody& r, double tend,double steps) {r.simulate(tend,steps);})
+      .def(py::pickle(
+          [](RigidBody& rbd){ // __getstate__
+              return rbd.to_pickle();
+          },
+          [](py::tuple data){ // __setstate__
+            RigidBody rbd;
+            rbd.load_pickle(data);
+            return rbd;
+          }));
+
+
     rbd.def("mass_matrix_from_inertia", &mass_matrix_from_inertia, "generates the a mass matrix from given inertia, center and mass",
             py::arg("inertia_matrix"), py::arg("center_of_mass"), py::arg("mass"));
 

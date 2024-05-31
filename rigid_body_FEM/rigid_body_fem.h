@@ -151,6 +151,7 @@ class RigidBody_FEM {
   Matrix<double> inertia_;
   double mass_=1;
   std::shared_ptr<NonlinearFunction> mass_function;
+  Matrix<double> mass_matrix_;
 
   #ifdef PYBIND11_MODULE
   py::list vertices_;
@@ -162,7 +163,7 @@ public:
   template<typename T>
   RigidBody_FEM(Vector<double> q,Vector<double> phat,double mass, Vec<3> center_of_mass, MatrixExpr<T>& inertia)
         : q_(q), phat_(phat), initialq_(q), initialphat_(phat), center_of_mass_(center_of_mass),
-          mass_(mass), inertia_(inertia), P_(6, 12) {
+          mass_(mass), inertia_(inertia), P_(6, 12), mass_matrix_(Diagonal<double>(6, 1.0)) {
     if(inertia.Width() != 3) throw std::invalid_argument("Inertia matrix must be 3x3");
     if(inertia.Height() != 3) throw std::invalid_argument("Inertia matrix must be 3x3");
     //if(q.Size() != dim_per_body) throw std::invalid_argument("q Vector must match mass matrix");
@@ -170,7 +171,7 @@ public:
   }
 
   RigidBody_FEM()
-        :   mass_function(std::make_shared<LinearFunction>(Matrix(12,12))),
+        :   mass_matrix_(Diagonal<double>(6, 1.0)),
           q_(12), initialq_(12), phat_(6), initialphat_(6), inertia_(3,3),center_of_mass_{0,0,0}, P_(6, 12){
     q_(1)=1;q_(6)=1;q_(11)=1;
     // set inertia?
@@ -240,22 +241,17 @@ public:
   #endif
 
   void recalcMassMatrix(){
-    /* mass_function = nullptr;
-    //Times 2 because of derivative of x * Ax in x is Ax + A(T)x
-    auto diag_function=std::make_shared<LinearFunction+
-    >(2*diagonal_block_from_inertia(inertia_,center_of_mass_,mass_));
-    auto block_func =std::make_shared<BlockFunction>(diag_function,3);
-    auto mass = std::make_shared<StackedFunction>();
-    mass->addFunction(block_func);
-    Vector<double> zero(6);
-    std::shared_ptr<NonlinearFunction> const_zero = std::make_shared<ConstantFunction>(zero);
-    mass->addFunction(const_zero);
-
-    mass_function = mass; */
+    mass_matrix_ = Matrix(6, 6);
+    mass_matrix_.Rows(3, 3).Cols(3, 3) = inertia_;
+    mass_matrix_(0, 0) = 1.0;
+    mass_matrix_(1, 1) = 1.0;
+    mass_matrix_(2, 2) = 1.0;
+    mass_matrix_ = mass_*mass_matrix_;
   }
 
   Vector<double>& q(){return q_;}
   Vector<double>& phat(){return phat_;}
+  Matrix<double>& Mass_matrix(){return mass_matrix_;}
 
   void setQ(Transformation<> t){q_=t.q_;}
   void setPhat(Vector<double> v){phat_=v;}
@@ -542,8 +538,8 @@ class EQRigidBody : public NonlinearFunction
     vhat.Range(0, 3) = vtrans;
     vhat.Range(3, 6) = vskew;
 
-    // for the moment, M shall be id
-    f.Range(6, 12) = vhat - p;
+    // Mass matrix included
+    f.Range(6, 12) = rbs_.bodies()[body_index_].Mass_matrix()*vhat - p;
 
     // III - first half
     Vector<double> a_force(3);

@@ -3,8 +3,8 @@
 
 int main()
 {
-  double tend = 0.25;
-  double steps = 5;
+  double tend = 0.25*10;
+  double steps = 5*10;
   Vector<double> q ( 12 );
   q(0)=0; q(4)=0; q(8)=0; 
 
@@ -30,8 +30,14 @@ int main()
 
   RBS_FEM rbs;
   rbs.gravity() = {0, 0, 9.81};
-  rbs.bodies().push_back(rb);
-  rbs.bodies().push_back(rb2);
+  /* rbs.bodies().push_back(rb);
+  rbs.bodies().push_back(rb2); */
+
+  Connector c1 = rbs.addBody(rb);
+  Connector c2 = rbs.addBody(rb2);
+
+  Spring spring{1.5, 0.05, c1, c2};
+  rbs.addSpring(spring);
 
   simulate(rbs,tend, steps, [](int i, double t, VectorView<double> q) { 
                     std::cout<<std::fixed << "Body1 newton-iteration: " << i << " newton-error: " << t << std::endl
@@ -46,8 +52,4 @@ int main()
                       <<"\t"<< "           " << q(9+30) << " ," << q(10+30) << ", "<<", " << q(11+30) << "} " << std::endl << std::endl; }                   
                    );
   std::cout << "}";
-
-  #ifdef FOO
-  std::cout << FOO << std::endl;
-  #endif
 }

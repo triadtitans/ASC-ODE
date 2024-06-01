@@ -13,6 +13,7 @@ namespace py = pybind11;
 #endif
 
 
+constexpr size_t dim_per_transform = 12;
 constexpr size_t dim_per_body = 18;
 constexpr size_t eq_per_body = 30;
 
@@ -137,6 +138,11 @@ struct Spring{
   Connector b;
 };
 
+struct Beam{
+  double length;
+  Connector a;
+  Connector b;
+};
 
 
 class RigidBody_FEM {
@@ -242,11 +248,11 @@ public:
 
   void recalcMassMatrix(){
     mass_matrix_ = Matrix(6, 6);
-    mass_matrix_.Rows(3, 3).Cols(3, 3) = inertia_;
     mass_matrix_(0, 0) = 1.0;
     mass_matrix_(1, 1) = 1.0;
     mass_matrix_(2, 2) = 1.0;
     mass_matrix_ = mass_*mass_matrix_;
+    mass_matrix_.Rows(3, 3).Cols(3, 3) = inertia_; // inertia matrix is already multiplied with mass
   }
 
   Vector<double>& q(){return q_;}
@@ -284,6 +290,24 @@ public:
 
 
 
+template<typename T>
+Vector<T> get_translation(VectorView<T> x, size_t body_index)  {
+  if(x.Size()%dim_per_transform)
+    throw std::invalid_argument("Vector must be in transform format");
+
+  Vector<T> trafo = {x(body_index*dim_per_transform + 0), x(body_index*dim_per_transform + 1), x(body_index*dim_per_transform + 2)};
+  return trafo;
+}
+
+template<typename T>
+Matrix<T> get_rotation(VectorView<T> x, size_t body_index)  {
+  if(x.Size()%dim_per_transform)
+    throw std::invalid_argument("Vector must be in transform format");
+  
+  Matrix<T> B = AsMatrix(x.Range(body_index*dim_per_transform + 3, body_index*dim_per_transform + 12), 3, 3);
+
+  return B;
+}
 
 class RBS_FEM{
   std::vector<RigidBody_FEM> _bodies;
@@ -319,7 +343,7 @@ class RBS_FEM{
     if(x.Size()%eq_per_body)
       throw std::invalid_argument("Vector must be in Equation format");
 
-    size_t num_bodies=x.Size()/eq_per_body ;
+    size_t num_bodies=x.Size()/eq_per_body;
     // the Vector in output format:
     Vector<double> res(num_bodies * dim_per_body);
 
@@ -350,6 +374,22 @@ class RBS_FEM{
       
 
       res.Range(i*eq_per_body+18,i*eq_per_body+24)=x.Range(i*dim_per_body+12,i*dim_per_body+18);
+    }
+    return res;
+  }
+
+   Vector<double> xToTransformations(VectorView<double> x){
+    if(x.Size()%eq_per_body)
+      throw std::invalid_argument("Vector must be in Equation format");
+
+    size_t num_bodies=x.Size()/eq_per_body;
+    // the Vector in output format:
+    Vector<double> res(num_bodies * dim_per_transform);
+
+    for(size_t i = 0;i<num_bodies; i++){
+      // store transformation data into array
+      res.Range(i*dim_per_transform,i*dim_per_transform+dim_per_transform)=x.Range(i*eq_per_body, i*eq_per_body + dim_per_transform);
+      // res.Range(i*dim_per_body+12,i*dim_per_body+18)=x.Range(i*eq_per_body+18,i*eq_per_body+24);
     }
     return res;
   }
@@ -401,6 +441,7 @@ class RBS_FEM{
 };
 
 
+
 // system of equations for one rigid body
 class EQRigidBody : public NonlinearFunction
 {
@@ -409,103 +450,21 @@ class EQRigidBody : public NonlinearFunction
   Vector<double> phatold; // current momentum
   RBS_FEM& rbs_; // parent rigid body system
   size_t body_index_; // index within _bodies of parent rbs_
+
+  Vector<double> force_half_;
+  Vector<double> force_new_;
+  
   public:
   EQRigidBody(Transformation<double> Q, Vector<double> Phat, double h, RBS_FEM& rbs, size_t body_index):
-      h_(h), Q_(Q), phatold(Phat), rbs_(rbs), body_index_(body_index) {};
+      h_(h), Q_(Q), phatold(Phat), rbs_(rbs), body_index_(body_index), force_half_(dim_per_transform), force_new_(dim_per_transform) {};
   size_t DimX() const  { return 30; }
   size_t DimF() const  { return 30; }
 
-  // helper function to calculate spring potential of spring with positive stiffness
-  template<typename T>
-  T spring_potential(const Spring& spring, const Connector& own_conn, const Connector& other_conn, const Vector<T>& a,  const Matrix<T>& B) const{
-    // a and B are the transformation of the object this EQRigidBody belongs to
-
-    // the absolute connector positions of the spring's endpoints
-    Vec<3, T> self_attachment_pos = own_conn.absPos(a, B);
-    Vec<3, T> other_attachment_pos;
-
-    if (other_conn.t == ConnectorType::mass){
-      RigidBody_FEM& other = rbs_.bodies()[other_conn.body_index];
-      Transformation<double> other_trafo(other.getQ());
-      other_attachment_pos = other_conn.absPos(other_trafo.getTranslation(), other_trafo.getRotation());
-    }
-    else if (other_conn.t == ConnectorType::fix){
-      other_attachment_pos = other_conn.pos;
-    }
-    else throw invalid_argument("unknown ConnectorType");
-
-    T current_len = sqrt((self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos));
-
-    // formula 1/2 * k * x^2
-    return -0.5 * spring.stiffness * (spring.length - current_len) * (spring.length - current_len);
+  Vector<double>& force_half(){
+    return force_half_;
   }
-
-  // potential
-  template <typename T>
-  auto V(Vector<T> a, Matrix<T> B) const {
-    T potential = 0;
-
-    // gravitational potential
-    auto t = Transformation<T>();
-    t.setRotation_from_matrix(B);
-    t.setTranslation(a(0), a(1), a(2));
-    potential -= rbs_.bodies()[body_index_].mass() * t.apply(rbs_.bodies()[body_index_].center()) * rbs_.gravity();
-
-    // potential from springs
-    /* for (Spring spr: rbs_.springs()) {
-      if (spr.a.t == ConnectorType::mass && spr.a.body_index == body_index_) {
-        RigidBody_FEM& other = rbs_.bodies()[spr.b.body_index];
-        Transformation<double> other_trafo(other.getQ());
-        // the absolute connector positions of the spring's endpoints
-        Vec<3, T> self_attachment_pos = spr.a.absPos(a, B);
-        Vec<3, T> other_attachment_pos = spr.b.absPos(other_trafo.getTranslation(), other_trafo.getRotation()); // if other is a fix, the transformation gets ignored
-        T current_len = sqrt((self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos));
-
-        // formula 1/2 * k * x^2
-        potential -= 0.5 * spr.stiffness * (spr.length - current_len) * (spr.length - current_len);
-
-      } else if (spr.b.t == ConnectorType::mass && spr.b.body_index == body_index_) {
-        RigidBody_FEM& other = rbs_.bodies()[spr.a.body_index];
-        Transformation<double> other_trafo(other.getQ());
-        // the absolute connector positions of the spring's endpoints
-        Vec<3, T> self_attachment_pos = spr.b.absPos(a, B);
-        Vec<3, T> other_attachment_pos = spr.a.absPos(other_trafo.getTranslation(), other_trafo.getRotation());
-        T current_len = sqrt((self_attachment_pos - other_attachment_pos) * (self_attachment_pos - other_attachment_pos));
-
-        // formula 1/2 * k * x^2
-        potential -= 0.5 * spr.stiffness * (spr.length - current_len) * (spr.length - current_len);
-      }
-    } */
-    // potential from springs
-    for (Spring spr: rbs_.springs()) {
-      if (spr.a.t == ConnectorType::mass && spr.a.body_index == body_index_) {        
-        potential += spring_potential<T>(spr, spr.a, spr.b, a, B);
-
-      } else if (spr.b.t == ConnectorType::mass && spr.b.body_index == body_index_) {
-        potential += spring_potential<T>(spr, spr.b, spr.a, a, B);
-      }
-    }
-
-    return potential;
-  }
-
-  template<typename T, typename S>
-  void force(Vector<T> a, Matrix<T> B, Vector<S>& a_out, Matrix<S>& B_out) const {
-    Vector<AutoDiffDiff<1, T>> a_diff = a;
-    Matrix<AutoDiffDiff<1, T>> B_diff = B;
-
-    for (size_t i=0; i < 3; i++){
-      a_diff(i).DValue(0) = 1;
-      a_out(i) = V(a_diff, B_diff).DValue(0);
-      a_diff(i).DValue(0) = 0;
-    }
-    for (size_t i=0; i < 3; i++){
-      for (size_t j=0; j < 3; j++){
-        B_diff(i, j).DValue(0) = 1;
-        B_out(i, j) = V(a_diff, B_diff).DValue(0);
-        B_diff(i, j).DValue(0) = 0;
-      }
-    }
+  Vector<double>& force_new(){
+    return force_new_;
   }
 
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
@@ -541,17 +500,20 @@ class EQRigidBody : public NonlinearFunction
     // Mass matrix included
     f.Range(6, 12) = rbs_.bodies()[body_index_].Mass_matrix()*vhat - p;
 
+    //TODO: Are Bold and Bnew in the right order?
     // III - first half
-    Vector<double> a_force(3);
-    Matrix<double> B_force(3, 3);
-    force<double, double> (0.5*(aold+anew), Bhalf, a_force, B_force); // half or old?
-    f.Range(12, 15) = (2/h_)*(phat.Range(0, 3) - p.Range(0, 3)) - a_force;
-    f.Range(15, 18) = inv_hat_map((Transpose(Bnew) * ((2/h_)*(Bnew*hat_map(phat.Range(3, 6)) - Bhalf*hat_map(p.Range(3, 6))) - B_force)));
+    /* Vector<double> a_force(3);
+    Matrix<double> B_force(3, 3); */
+    
+    // force<double, double> (0.5*(aold+anew), Bhalf, a_force, B_force); // half or old?
+    f.Range(12, 15) = (2/h_)*(p.Range(0, 3) - phatold.Range(0, 3)) - get_translation(force_half_, 0);
+    f.Range(15, 18) = inv_hat_map((Transpose(Bold) * ((2/h_)*(Bhalf*hat_map(p.Range(3, 6)) - Bold*hat_map(phatold.Range(3, 6))) - get_rotation(force_half_, 0)))); //TODO: Are Bold and Bnew in the right order?
 
     // III - second half
-    force<double, double> (anew, Bnew, a_force, B_force);
-    f.Range(18, 21) = (2/h_)*(p.Range(0, 3) - phatold.Range(0, 3)) - a_force;
-    f.Range(21, 24) = inv_hat_map((Transpose(Bold) * ((2/h_)*(Bhalf*hat_map(p.Range(3, 6)) - Bold*hat_map(phatold.Range(3, 6))) - B_force)));
+    // force<double, double> (anew, Bnew, a_force, B_force);
+    f.Range(18, 21) = (2/h_)*(phat.Range(0, 3) - p.Range(0, 3)) - get_translation(force_new_, 0);
+    // std::cout << get_translation(force_new_, 0) << std::endl;
+    f.Range(21, 24) = inv_hat_map((Transpose(Bnew) * ((2/h_)*(Bnew*hat_map(phat.Range(3, 6)) - Bhalf*hat_map(p.Range(3, 6))) - get_rotation(force_new_, 0)))); //TODO: Are Bold and Bnew in the right order?
 
     // Bnew must be orthonormal
     Matrix<double> eye = Diagonal(3, 1);
@@ -574,22 +536,112 @@ class EQRigidBodySystem : public NonlinearFunction
 {
   RBS_FEM& rbs_;
   std::shared_ptr<StackedFunction> _func;
+  std::vector<std::shared_ptr<EQRigidBody>> _functions;
   size_t _num_bodies;
-  public:
+
+ public:
   size_t DimX() const  { return eq_per_body*_num_bodies; }
   size_t DimF() const  { return  eq_per_body*_num_bodies; }
+
   EQRigidBodySystem(RBS_FEM& rbs, Vector<double> state, size_t num_bodies, double h): rbs_(rbs), _num_bodies(num_bodies){
     _func = std::make_shared<StackedFunction>();
+    // rechnen potential und force => welche parameter für 1 body =>
     for(int i=0;i<num_bodies;i++){
       auto q = state.Range(i*dim_per_body,i*dim_per_body+12);
-      auto p = state.Range(i*dim_per_body+12,i*dim_per_body+18);
-      std::shared_ptr<EQRigidBody> eq = std::make_shared<EQRigidBody>(Transformation<double>(q), p, h, rbs_, i);
+      auto p = state.Range(i*dim_per_body+12,i*dim_per_body+18); 
+      std::shared_ptr<EQRigidBody> eq = std::make_shared<EQRigidBody>(Transformation<double>(q), p, h, rbs_, i); //(Transformation<double>(q), p, h, rbs_, i);
       _func->addFunction(eq);
+      _functions.push_back(eq);
     }
+  }
+
+
+
+
+  template <typename T>
+  T calculate_gravitation_V(Vector<T> a, Matrix<T> B, size_t body_index) const {
+    auto t = Transformation<T>();
+    t.setRotation_from_matrix(B);
+    t.setTranslation(a(0), a(1), a(2));
+    
+    return (-1)*rbs_.bodies()[body_index].mass() * t.apply(rbs_.bodies()[body_index].center()) * rbs_.gravity();
+  }
+
+  
+  template<typename T>
+  T V (VectorView<T> transforms) const {
+    T potential = 0;
+
+    // gravity
+    for (size_t i=0; i < _num_bodies; i++){
+      potential += calculate_gravitation_V(get_translation(transforms, i), get_rotation(transforms, i), i);
+    }
+
+    // spring potential
+    for (Spring& spr: rbs_.springs()) {
+      // auto& s = rbs_.springs()[i];
+      //Evaluate distance between connectors, and compare with beam length
+      Connector c1 = spr.a;
+      size_t l = c1.body_index;
+      Connector c2 = spr.b;
+      size_t k = c2.body_index;
+
+      Vec<3, T> pos1 = c1.absPos(get_translation(transforms, l), get_rotation(transforms, l));
+      Vec<3, T> pos2 = c2.absPos(get_translation(transforms, k), get_rotation(transforms, k));
+      T norm = Norm(pos1-pos2)-spr.length;
+      potential += (1/2.0)*spr.stiffness*(norm * norm);
+    }
+
+    return potential;
+  }
+
+  template<typename T, typename S>
+  void force(VectorView<T> transform, VectorView<S>& f) const {
+    Vector<AutoDiffDiff<1, T>> transform_diff = transform;
+    
+    for (size_t i=0; i < transform.Size(); i++){
+      transform_diff(i).DValue(0) = 1;
+      f(i) = V<>(transform_diff).DValue(0);
+      // std::cout << V<>(transform_diff).Value() << std::endl;
+      transform_diff(i).DValue(0) = 0;
+    }
+
+    /* double eps = 1e-3;
+    Vector<> xl(transform.Size()), xr(transform.Size()), fl(1), fr(1);
+    for (size_t i = 0; i < transform.Size(); i++)
+      {
+        xl = transform;
+        xl(i) -= eps;
+        xr = transform;
+        xr(i) += eps;
+        fl = V (xl);
+        fr = V (xr);
+        f(i) = 1/(2*eps) * (fr(0)-fl(0));
+      } */
   }
 
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
   {
+    
+    Vector<double> transformations_new = rbs_.xToTransformations(x);
+
+    // calculate forces globally
+    Vector<double> forces_half(transformations_new.Size());
+    Vector<double> state_old(dim_per_body*_num_bodies);
+    rbs_.getState(state_old);
+    Vector<double> transformations_half = 0.5*(rbs_.xToTransformations(rbs_.stateToX(state_old)) + transformations_new);
+    force<>(transformations_half, forces_half);
+    Vector<double> forces_new(transformations_new.Size());
+    force<>(transformations_new, forces_new);
+
+    // std::cout << "new: " << forces_new << std::endl << "half: " << forces_half << std::endl;
+    // std::cout << "new: " << transformations_new << std::endl << "half: " << transformations_half << std::endl;
+    // std::cout << _num_bodies << std::endl;
+    for (size_t i = 0; i < _num_bodies; i++){
+      _functions[i]->force_half() = forces_half.Range(i * dim_per_transform, (i+1) * dim_per_transform);
+      _functions[i]->force_new() = forces_new.Range(i * dim_per_transform, (i+1) * dim_per_transform);
+      // std::cout << "new: " << _functions[i]->force_new() << std::endl << "half: " << _functions[i]->force_half() << std::endl;
+    }
     _func->Evaluate(x,f);
   }
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override

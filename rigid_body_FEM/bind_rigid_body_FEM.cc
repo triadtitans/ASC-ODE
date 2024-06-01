@@ -43,6 +43,12 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
                           [](Connector& c, std::array<double,3> t){c.pos(0)=t[0];c.pos(1)=t[1];c.pos(2)=t[2];})
       .def_property_readonly("body_index",[](Connector& c){return c.body_index;})
       .def_property_readonly("type",[](Connector& c){return c.t == ConnectorType::mass ? 0 : 1 ;});
+
+    py::class_<Beam>(rbd,"Beam", py::module_local())
+      .def(py::init<>([](Connector a, Connector b, double length){return Beam{length,a,b};}))
+      .def_property_readonly("length", [](Beam& b){return b.length;})
+      .def_property_readonly("connectorA", [](Beam& b){return b.a;})
+      .def_property_readonly("connectorB",[](Beam& b){return b.b;});
     
     py::class_<Spring>(rbd,"Spring", py::module_local())
       .def(py::init<>([](Connector a, Connector b, double length, double stiffness){return Spring{length,stiffness,a,b};})) // stiffness should be positive! (-k)
@@ -120,7 +126,7 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
       .def(py::init<>())
       .def("saveState", &RBS_FEM::saveState)
       .def("addBody",&RBS_FEM::addBody)
-      //.def("addBeam",&RBS_FEM::addBeam)
+      .def("addBeam",&RBS_FEM::addBeam)
       .def("addSpring",&RBS_FEM::addSpring)
       .def("addFix",&RBS_FEM::addFix)
       .def("bodies", &RBS_FEM::bodies)
@@ -133,7 +139,7 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
         [](RBS_FEM& r, std::array<double,3> t){
           for (int i = 0;i<3;i++) r.gravity()(i)=t[i];
         })
-      //.def("beams", &RBS_FEM::beams)
+      .def("beams", &RBS_FEM::beams)
       .def("springs", &RBS_FEM::springs)
       .def("saveState", &RBS_FEM::saveState)
       .def("reset", &RBS_FEM::reset)

@@ -312,15 +312,17 @@ Matrix<T> get_rotation(VectorView<T> x, size_t body_index)  {
 class RBS_FEM{
   std::vector<RigidBody_FEM> _bodies;
   std::vector<Spring> _springs;
+  std::vector<Beam> _beams;
   Vector<double> gravity_ = {0, 0, 0};
 
   public:
   std::vector<RigidBody_FEM>& bodies(){return _bodies;}
   std::vector<Spring>& springs(){return _springs;}
+  auto& beams(){return _beams;}
   Vector<double> & gravity() {return gravity_;}
   int numBodies(){return _bodies.size();}
   int numSprings(){return _springs.size();}
-  // int numBeams(){return _beams.size();}
+  int numBeams(){return _beams.size();}
 
   void getState(VectorView<double> out){
     for(int i=0; i<_bodies.size(); i++){
@@ -432,6 +434,10 @@ class RBS_FEM{
 
   void addSpring(Spring s){
     _springs.push_back(s);
+  }
+
+  void addBeam(Beam b){
+    _beams.push_back(b);
   }
 
   Connector addFix(){

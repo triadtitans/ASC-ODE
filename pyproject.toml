@@ -1,3 +1,8 @@
+# Compilation:
+#   install pyodide-build==0.26.0
+#   make a pyodide virtual environment
+#   "pyodide build"
+
 [build-system]
 requires = ["scikit-build-core>=0.3.3", "pybind11"]
 build-backend = "scikit_build_core.build"
@@ -10,7 +15,7 @@ description="rigid body mechanics implementation"
 authors = [
   { name = "J. Schöberl, T. Leichtfried, L. Gauler, N. Hammer" },
 ]
-requires-python = "==3.11.9"
+requires-python = "==3.12.1"
 
 [tool.scikit-build]
 wheel.expand-macos-universal-tags = true

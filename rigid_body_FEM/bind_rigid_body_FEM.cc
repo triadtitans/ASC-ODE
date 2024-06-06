@@ -21,7 +21,7 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
 
 
     // the main bindings:
-    rbd.doc() = "rigid body FEM simulator";       
+    rbd.doc() = "rigid body FEM simulator";
        
     py::class_<Transformation<>>(rbd,"Transformation", py::module_local())
       .def(py::init<>())
@@ -32,6 +32,8 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
       })
       .def("setTranslation",&Transformation<>::setTranslation)
       .def("setRotation",&Transformation<>::setRotation)
+      .def("setRotationDeg",&Transformation<>::setRotationDeg)
+      .def("applyRotationDeg",&Transformation<>::applyRotationDeg)
       .def("asTuple",[](Transformation<>& t){
         // *column-major* transformation matrix as in https://threejs.org/docs/#api/en/math/Matrix4
         // converts Schöberl-style ordering of Q to column-major ordering of a three.js transformation matrix:
@@ -57,15 +59,26 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
       .def_property_readonly("connectorA", [](Spring& b){return b.a;})
       .def_property_readonly("connectorB",[](Spring& b){return b.b;});
 
-    py::class_<RigidBody_FEM> (rbd, "RigidBody_FEM", py::dynamic_attr())
+    py::class_<RigidBody_FEM> (rbd, "RigidBody_FEM")
       .def(py::init<>())
-      /*.def("__str__", [](RigidBody & rb) {
-        std::stringstream sstr;
-        sstr << mss;
-        return sstr.str();
-      })*/
-      .def_property("q", &RigidBody_FEM::getQ,&RigidBody_FEM::setQ)
-      .def_property("phat", &RigidBody_FEM::getPhat,&RigidBody_FEM::setPhat)
+      .def_property("transformation", &RigidBody_FEM::getQ, &RigidBody_FEM::setQ)
+      // .def_property("phat", &RigidBody_FEM::getPhat,&RigidBody_FEM::setPhat)
+      .def_property("momentumTrans",
+        [](RigidBody_FEM& r){
+          return py::make_tuple(r.phat()(0), r.phat()(1), r.phat()(2));
+        },
+        [](RigidBody_FEM& r, std::array<double,3> vals){
+          for (int i=0; i < 3; i++)
+            r.phat()(i) = vals[i];
+        })
+      .def_property("momentumRot",
+        [](RigidBody_FEM& r){
+          return py::make_tuple(r.phat()(3), r.phat()(4), r.phat()(5));
+        },
+        [](RigidBody_FEM& r, std::array<double,3> vals){
+          for (int i=0; i < 3; i++)
+            r.phat()(i + 3) = vals[i];
+        })
       .def_property("center",
         [](RigidBody_FEM& r){
           std::array<double,3> t;
@@ -107,7 +120,7 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
       .def("recalcMassMatrix", &RigidBody_FEM::recalcMassMatrix)
       .def("saveState", &RigidBody_FEM::saveState)
       .def("reset", &RigidBody_FEM::reset) 
-      .def("setPhat", &RigidBody_FEM::setPhat_v)
+      // .def("setPhat", &RigidBody_FEM::setPhat_v)
       .def(py::pickle(
           [](RigidBody_FEM& rbd){ // __getstate__
               return rbd.to_pickle();
@@ -129,7 +142,7 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
       .def("addBeam",&RBS_FEM::addBeam)
       .def("addSpring",&RBS_FEM::addSpring)
       .def("addFix",&RBS_FEM::addFix)
-      .def("bodies", &RBS_FEM::bodies)
+      .def("bodies", &RBS_FEM::bodies, py::return_value_policy::reference_internal)
       .def_property("gravity",
         [](RBS_FEM& r){
           std::array<double,3> t;

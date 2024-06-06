@@ -14,5 +14,8 @@ target_link_libraries (rigid_body_FEM PUBLIC)
 #      "rigid_body_FEM.so" 
 #   COMMENT "Copying to output directory")
 
+# fix ltrans warning: https://stackoverflow.com/a/72222512
+target_compile_options(rigid_body_FEM PRIVATE "-flto=auto")
+
 add_executable (test_rb_fem rigid_body_fem.cc)
 target_link_libraries (test_rb_fem PUBLIC)

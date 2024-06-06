@@ -57,7 +57,11 @@ class Transformation{
   Vector<T> q_;
 
   Transformation(Vector<T> q):q_(q){}
-  Transformation():q_(12){}
+  Transformation():q_(12){
+    q_(1)=1;
+    q_(6)=1;
+    q_(11)=1;
+  }
 
   Vec<3, T> apply(Vec<3, T> pos){
     Vec<3, T> trans{q_(0),q_(4),q_(8)};
@@ -77,6 +81,17 @@ class Transformation{
         setRotation(i, j, B(i, j));
       }
     }
+  }
+  // set rotation matrix from x, y or z degrees
+  void setRotationDeg(int axis, T deg){
+    Matrix<T> R = makeRotationMatrix3<T>(axis, deg);
+    setRotation_from_matrix(R);
+  }
+  // add a rotation around axis (by index) with degrees deg
+  void applyRotationDeg(int axis, T deg){
+    Matrix<T> R_new = makeRotationMatrix3<T>(axis, deg);
+    Matrix<T> R_old = getRotation();
+    setRotation_from_matrix(R_old*R_new);
   }
 
   Vector<T> getTranslation() const{

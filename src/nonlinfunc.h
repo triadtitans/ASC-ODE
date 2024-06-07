@@ -371,6 +371,26 @@ class Derivative : public NonlinearFunction
     }
   };
 
+  class PartialOutput : public NonlinearFunction
+  {
+    size_t size, first, next;
+  public:
+    PartialOutput (size_t _size, size_t _first, size_t _next)
+      : size(_size), first(_first), next(_next) { }
+    
+    size_t DimX() const override { return size; }
+    size_t DimF() const override { return next - first; }
+    void Evaluate (VectorView<double> x, VectorView<double> f) const override
+    {
+      f = x.Range(first, next);
+    }
+    void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
+    {
+      df = 0.0;
+      df.Diag() = 1;
+    }
+  };
+
   class BlockFunction : public NonlinearFunction
   {
     std::shared_ptr<NonlinearFunction> func;

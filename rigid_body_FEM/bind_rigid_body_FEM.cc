@@ -47,7 +47,7 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
       .def_property_readonly("type",[](Connector& c){return c.t == ConnectorType::mass ? 0 : 1 ;});
 
     py::class_<Beam>(rbd,"Beam", py::module_local())
-      .def(py::init<>([](Connector a, Connector b, double length){return Beam{length,a,b};}))
+      .def(py::init<>([](Connector a, Connector b){return Beam{0,a,b};}))
       .def_property_readonly("length", [](Beam& b){return b.length;})
       .def_property_readonly("connectorA", [](Beam& b){return b.a;})
       .def_property_readonly("connectorB",[](Beam& b){return b.b;});

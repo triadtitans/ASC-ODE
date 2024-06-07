@@ -35,17 +35,20 @@ int main()
 
   Connector c1 = rbs.addBody(rb);
   Connector c2 = rbs.addBody(rb2);
+  c1.pos = {1, 2, 3};
+  c2.pos = {4, 5, 6};
+  double len = Norm(rb.absolutePosOf(c1.pos) - rb2.absolutePosOf(c2.pos));
 
-  Spring spring{1.5, 0.05, c1, c2};
-  rbs.addSpring(spring);
+  Beam beam{len, c1, c2};
+  rbs.addBeam(beam);
 
   simulate(rbs,tend, steps, [](int i, double t, VectorView<double> q) { 
-                    std::cout<<std::fixed << "Body1 newton-iteration: " << i << " newton-error: " << t << std::endl
+                    std::cout<<std::fixed << "Body1 newton-iteration: " << i << " newton-error: " << std::scientific << t << std::fixed << std::endl
                       <<"\t"<< "Translation =" << q(0) << " ," << q(1) << ", "<<", " << q(2) << "} " << std::endl
                       <<"\t"<< " Rotation: " << q(3) << " ," << q(4) << ", "<<", " << q(5) << "} " << std::endl
                       <<"\t"<< "           " << q(6) << " ," << q(7) << ", "<<", " << q(8) << "} " << std::endl
                       <<"\t"<< "           " << q(9) << " ," << q(10) << ", "<<", " << q(11) << "} " << std::endl << std::endl
-                      << "Body2 newton-iteration: " << i << " newton-error: " << t << std::endl
+                      << "Body2 newton-iteration: " << i << " newton-error: " << std::scientific << t << std::fixed << std::endl
                       <<"\t"<< "Translation =" << q(0+30) << " ," << q(1+30) << ", "<<", " << q(2+30) << "} " << std::endl
                       <<"\t"<< " Rotation: " << q(3+30) << " ," << q(4+30) << ", "<<", " << q(5+30) << "} " << std::endl
                       <<"\t"<< "           " << q(6+30) << " ," << q(7+30) << ", "<<", " << q(8+30) << "} " << std::endl

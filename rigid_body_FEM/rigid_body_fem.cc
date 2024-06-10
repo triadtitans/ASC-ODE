@@ -29,17 +29,17 @@ int main()
   rb2.setPhat_v(3, 0.01); */
 
   RBS_FEM rbs;
-  rbs.gravity() = {0, 0, 9.81};
+  rbs.gravity() = {0, 0, 0.01};
   /* rbs.bodies().push_back(rb);
   rbs.bodies().push_back(rb2); */
 
   Connector c1 = rbs.addBody(rb);
-  Connector c2 = rbs.addBody(rb2);
-  c1.pos = {1, 2, 3};
-  c2.pos = {4, 5, 6};
+  Connector c2{ConnectorType::fix, {0, 0, 3}, 0}; //= rbs.addBody(rb2);
+  /* c1.pos = {1, 2, 3};
+  c2.pos = {4, 5, 6}; */
   double len = Norm(rb.absolutePosOf(c1.pos) - rb2.absolutePosOf(c2.pos));
 
-  Beam beam{len, c1, c2};
+  Beam beam{0, c1, c2};
   rbs.addBeam(beam);
 
   simulate(rbs,tend, steps, [](int i, double t, VectorView<double> q) { 

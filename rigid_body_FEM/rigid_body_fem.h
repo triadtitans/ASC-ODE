@@ -308,6 +308,7 @@ class RBS_FEM{
   std::vector<Spring> _springs;
   std::vector<Beam> _beams;
   Vector<double> gravity_ = {0, 0, 0};
+  std::vector<double> lag_params;
 
   public:
   std::vector<RigidBody_FEM>& bodies(){return _bodies;}
@@ -323,11 +324,17 @@ class RBS_FEM{
       out.Range(i*dim_per_body,i*dim_per_body+12)=_bodies[i].q();
       out.Range(i*dim_per_body+12, (i+1)*dim_per_body)=_bodies[i].phat();
     }
+    for (int i=0; i < numBeams(); i++){
+      out(numBodies()*dim_per_body + i) = lag_params[i];
+    }
   }
   void setState(VectorView<double> in){
     for(int i=0; i<numBodies(); i++){
       _bodies[i].q()=in.Range(i*dim_per_body,i*dim_per_body+12);
       _bodies[i].phat()=in.Range(i*dim_per_body+12, (i+1)*dim_per_body);
+    }
+    for (int i=0; i < numBeams(); i++){
+      lag_params[i] = in(numBodies()*dim_per_body + i);
     }
   }
 
@@ -359,7 +366,7 @@ class RBS_FEM{
       throw std::invalid_argument("Vector must be in equation format");
 
     // the Vector in output format:
-    Vector<double> res(numBodies() * dim_per_body);
+    Vector<double> res(numBodies() * dim_per_body + numBeams());
 
     for(size_t i=0; i < numBodies(); i++){
       // make Transformation object from equation solution format
@@ -371,11 +378,13 @@ class RBS_FEM{
       res.Range(i*dim_per_body,i*dim_per_body+12)=T.q_;
       res.Range(i*dim_per_body+12,i*dim_per_body+18)=x.Range(i*eq_per_body+18,i*eq_per_body+24);
     }
+    res.Range(numBodies()*dim_per_body, res.Size()) = x.Range(numBodies()*eq_per_body, x.Size());
+
     return res;
   }
 
   Vector<double> stateToX (VectorView<double> state){
-    if(state.Size()%dim_per_body)
+    if((state.Size() - numBeams())%dim_per_body)
       throw std::invalid_argument("Vector must be in Equation format");
 
     Vector<double> res(numBodies() * eq_per_body + numBeams());
@@ -388,6 +397,8 @@ class RBS_FEM{
 
       res.Range(i*eq_per_body+18,i*eq_per_body+24)=state.Range(i*dim_per_body+12,i*dim_per_body+18);
     }
+    res.Range(numBodies()*eq_per_body, res.Size()) = state.Range(numBodies()*dim_per_body, state.Size());
+
     return res;
   }
 
@@ -453,8 +464,9 @@ class RBS_FEM{
     Transformation<> trafo_a = bodies()[b.a.body_index].getQ();
     Transformation<> trafo_b = bodies()[b.b.body_index].getQ();
     b.length = Norm(b.a.absPos(trafo_a.getTranslation(), trafo_a.getRotation())
-                    - b.b.absPos(trafo_b.getTranslation(), trafo_b.getRotation())) + 0.00001;
+                    - b.b.absPos(trafo_b.getTranslation(), trafo_b.getRotation()));
     _beams.push_back(b);
+    lag_params.push_back(1);
   }
 
   Connector addFix(){
@@ -627,6 +639,7 @@ class EQRigidBodySystem : public NonlinearFunction
       Vec<3, T> pos1 = c1.absPos(rbs_.get_translation(transforms, l), rbs_.get_rotation(transforms, l));
       Vec<3, T> pos2 = c2.absPos(rbs_.get_translation(transforms, k), rbs_.get_rotation(transforms, k));
       T norm = (pos1-pos2)*(pos1-pos2)-beam.length*beam.length; // shall be zero
+      // Vorzeichen?
       potential += transforms(dim_per_transform*_num_bodies + i) * norm; // transforms[dim_per_transform*_num_bodies + i] is lagrange parameter
     }
 
@@ -667,10 +680,13 @@ class EQRigidBodySystem : public NonlinearFunction
 
     // calculate forces globally
     Vector<double> forces_half(transformations_new.Size());
-    Vector<double> state_old(dim_per_body*_num_bodies);
+    Vector<double> state_old(dim_per_body*_num_bodies + _num_beams);
     rbs_.getState(state_old);
-    Vector<double> transformations_half = 0.5*(rbs_.xToTransformations(rbs_.stateToX(state_old)) + transformations_new);
-    force<>(transformations_half, forces_half);
+    Vector<double> transformations_old = 0.5*(rbs_.xToTransformations(rbs_.stateToX(state_old))+transformations_new);
+
+ 
+
+    force<>(transformations_old, forces_half);
     Vector<double> forces_new(transformations_new.Size());
     force<>(transformations_new, forces_new);
 
@@ -693,7 +709,7 @@ class EQRigidBodySystem : public NonlinearFunction
     // _func->EvaluateDeriv(x,df.Rows(0,_func->DimF()).Cols(0,_func->DimF()));
 
     // double eps = 1e-3;
-    std::cout << df << std::endl << std::endl;
+    //std::cout << df << std::endl << std::endl;
     // // lower left block of matrix, numerical derivative
 
     // Vector<> xl(_func->DimX()), xr(_func->DimX()), fl(_num_beams), fr(_num_beams);
@@ -758,7 +774,7 @@ class EQRigidBodySystem : public NonlinearFunction
 
 void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,double,VectorView<double>)> callback = nullptr ){  
 
-  Vector<double> state(dim_per_body*rbs.numBodies());
+  Vector<double> state(dim_per_body*rbs.numBodies() + rbs.numBeams());
   Vector<double> x(eq_per_body*rbs.numBodies() + rbs.numBeams());
 
   // copy over current values 
@@ -782,7 +798,7 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
 
     state = rbs.xToState(x);
 
-    // std::cout << x << "\n" << std::endl;
+  
     // std::cout << state << std::endl;
 
     //store data into different bodies

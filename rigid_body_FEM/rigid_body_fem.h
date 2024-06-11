@@ -486,17 +486,17 @@ class EQRigidBody : public NonlinearFunction
   RBS_FEM& rbs_; // parent rigid body system
   size_t body_index_; // index within _bodies of parent rbs_
 
-  Vector<double> force_half_;
+  Vector<double> force_old_;
   Vector<double> force_new_;
   
   public:
   EQRigidBody(Transformation<double> Q, Vector<double> Phat, double h, RBS_FEM& rbs, size_t body_index):
-      h_(h), Q_(Q), phatold(Phat), rbs_(rbs), body_index_(body_index), force_half_(dim_per_transform), force_new_(dim_per_transform) {};
+      h_(h), Q_(Q), phatold(Phat), rbs_(rbs), body_index_(body_index), force_old_(dim_per_transform), force_new_(dim_per_transform) {};
   size_t DimX() const  { return 18; }
   size_t DimF() const  { return 18; }
 
-  Vector<double>& force_half(){
-    return force_half_;
+  Vector<double>& force_old(){
+    return force_old_;
   }
   Vector<double>& force_new(){
     return force_new_;
@@ -531,7 +531,7 @@ class EQRigidBody : public NonlinearFunction
     vhat.Range(3, 6) = vskew;
 
 
-
+    // I
     f.Range(0, 6) = rbs_.bodies()[body_index_].Mass_matrix()*vhat - p;
                   
 
@@ -552,9 +552,9 @@ class EQRigidBody : public NonlinearFunction
 
     // III - second half
     // force<double, double> (anew, Bnew, a_force, B_force);
-    f.Range(6, 9) = (2/h_)*(p.Range(0, 3) - phatold.Range(0, 3)) - rbs_.get_translation(force_new_, 0);
+    f.Range(6, 9) = (2/h_)*(p.Range(0, 3) - phatold.Range(0, 3)) - rbs_.get_translation(force_old_, 0);
     // std::cout << get_translation(force_new_, 0) << std::endl;
-    f.Range(9, 12) = inv_hat_map((Transpose(Bnew) * ((2/h_)*(Bnew*hat_map(p.Range(3, 6)) - Bold*hat_map(phatold.Range(3, 6))) - rbs_.get_rotation(force_new_, 0)))); //TODO: Are Bold and Bnew in the right order?
+    f.Range(9, 12) = inv_hat_map((Transpose(Bnew) * ((2/h_)*(Bnew*hat_map(p.Range(3, 6)) - Bold*hat_map(phatold.Range(3, 6))) - rbs_.get_rotation(force_old_, 0)))); //TODO: Are Bold and Bnew in the right order?
 
     // Bnew must be orthonormal
     Matrix<double> eye = Diagonal(3, 1);
@@ -684,26 +684,33 @@ class EQRigidBodySystem : public NonlinearFunction
     Vector<double> transformations_new = rbs_.xToTransformations(x);
 
     // calculate forces globally
-    Vector<double> forces_half(transformations_new.Size());
+    Vector<double> forces_old(transformations_new.Size());
     Vector<double> state_old(dim_per_body*_num_bodies + _num_beams);
     rbs_.getState(state_old);
+
+
     Vector<double> transformations_old = (rbs_.xToTransformations(rbs_.stateToX(state_old)));
-    //transformation_old.Range(12,18)=
+    transformations_old.Range(dim_per_transform*_num_bodies,dim_per_transform*_num_bodies+_num_beams)
+          =x.Range(_num_bodies*eq_per_body,_num_bodies*eq_per_body+_num_beams);
  
 
-    force<>(transformations_old, forces_half);
+    //Force at t0 but with variing constraint
+    force<>(transformations_old, forces_old);
     Vector<double> forces_new(transformations_new.Size());
+
+    //Force at t1 only used to violation of constraint
     force<>(transformations_new, forces_new);
 
     // std::cout << "new: " << forces_new << std::endl << "half: " << forces_half << std::endl;
     // std::cout << "new: " << transformations_new << std::endl << "half: " << transformations_half << std::endl;
     // std::cout << _num_bodies << std::endl;
     for (size_t i = 0; i < _num_bodies; i++){
-      _functions[i]->force_half() = forces_half.Range(i * dim_per_transform, (i+1) * dim_per_transform);
+      _functions[i]->force_old() = forces_old.Range(i * dim_per_transform, (i+1) * dim_per_transform);
       _functions[i]->force_new() = forces_new.Range(i * dim_per_transform, (i+1) * dim_per_transform);
       // std::cout << "new: " << _functions[i]->force_new() << std::endl << "half: " << _functions[i]->force_half() << std::endl;
     }
     _func->Evaluate(x,f);
+
 
     f.Range(_func->DimF(), DimF()) = forces_new.Range(dim_per_transform*_num_bodies, forces_new.Size());
   }
@@ -715,6 +722,7 @@ class EQRigidBodySystem : public NonlinearFunction
 
     // double eps = 1e-3;
     //std::cout << df << std::endl << std::endl;
+
     // // lower left block of matrix, numerical derivative
 
     // Vector<> xl(_func->DimX()), xr(_func->DimX()), fl(_num_beams), fr(_num_beams);

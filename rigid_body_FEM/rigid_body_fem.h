@@ -15,7 +15,7 @@ namespace py = pybind11;
 
 constexpr size_t dim_per_transform = 12;
 constexpr size_t dim_per_body = 18;
-constexpr size_t eq_per_body = 30;
+constexpr size_t eq_per_body = 18;
 
 class RigidBody_FEM;
 class RBS_FEM;
@@ -376,7 +376,7 @@ class RBS_FEM{
       
       // store transformation data into array
       res.Range(i*dim_per_body,i*dim_per_body+12)=T.q_;
-      res.Range(i*dim_per_body+12,i*dim_per_body+18)=x.Range(i*eq_per_body+18,i*eq_per_body+24);
+      res.Range(i*dim_per_body+12,i*dim_per_body+18)=x.Range(i*eq_per_body+12,i*eq_per_body+18);
     }
     res.Range(numBodies()*dim_per_body, res.Size()) = x.Range(numBodies()*eq_per_body, x.Size());
 
@@ -395,7 +395,7 @@ class RBS_FEM{
       res.Range(i*eq_per_body,i*eq_per_body+3)=Q.getTranslation();
       AsMatrix(res.Range(i*eq_per_body+3,i*eq_per_body+12), 3, 3) = Q.getRotation();
 
-      res.Range(i*eq_per_body+18,i*eq_per_body+24)=state.Range(i*dim_per_body+12,i*dim_per_body+18);
+      res.Range(i*eq_per_body+12,i*eq_per_body+18)=state.Range(i*dim_per_body+12,i*dim_per_body+18);
     }
     res.Range(numBodies()*eq_per_body, res.Size()) = state.Range(numBodies()*dim_per_body, state.Size());
 
@@ -492,8 +492,8 @@ class EQRigidBody : public NonlinearFunction
   public:
   EQRigidBody(Transformation<double> Q, Vector<double> Phat, double h, RBS_FEM& rbs, size_t body_index):
       h_(h), Q_(Q), phatold(Phat), rbs_(rbs), body_index_(body_index), force_half_(dim_per_transform), force_new_(dim_per_transform) {};
-  size_t DimX() const  { return 30; }
-  size_t DimF() const  { return 30; }
+  size_t DimX() const  { return 18; }
+  size_t DimF() const  { return 18; }
 
   Vector<double>& force_half(){
     return force_half_;
@@ -504,15 +504,15 @@ class EQRigidBody : public NonlinearFunction
 
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
   {
-    // x (a(3), B(row_maj)(9), v_trans(3), v_skew(3), phat(6), p(6))
+    // x (a(3), B(row_maj)(9), p(6))
 
     // variables
     Vector<double> anew = x.Range(0, 3);
     MatrixView<double> Bnew = AsMatrix(x.Range(3, 12), 3, 3);
-    Vector<double> vtrans = x.Range(12, 15);
-    Vector<double> vskew = x.Range(15, 18);
-    Vector<double> phat = x.Range(18, 24);
-    Vector<double> p = x.Range(24, 30);
+    //Vector<double> vtrans = x.Range(12, 15);
+    //Vector<double> vskew = x.Range(15, 18);
+    Vector<double> p = x.Range(12, 18);
+    //Vector<double> p = x.Range(24, 30);
 
     // known constants
     Vector<double> aold = Q_.getTranslation();
@@ -523,17 +523,23 @@ class EQRigidBody : public NonlinearFunction
 
     // std::cout << vskew << "\n" << std::endl;
 
-    // I
-    f.Range(0, 3) = (1/h_)*(anew - aold) - vtrans;
-    f.Range(3, 6) = (1/h_)*inv_hat_map(Transpose(Bhalf)*(Bnew - Bold)) - vskew;
+    Vector<double> vtrans = (1/h_)*(anew - aold);
+    Vector<double> vskew = (1/h_)*inv_hat_map(Transpose(Bhalf)*(Bnew - Bold));
 
-    // II
     Vector<double> vhat(6);
     vhat.Range(0, 3) = vtrans;
     vhat.Range(3, 6) = vskew;
 
+
+
+    f.Range(0, 6) = rbs_.bodies()[body_index_].Mass_matrix()*vhat - p;
+                  
+
+    // II
+
+
     // Mass matrix included
-    f.Range(6, 12) = rbs_.bodies()[body_index_].Mass_matrix()*vhat - p;
+    //f.Range(6, 12) = rbs_.bodies()[body_index_].Mass_matrix()*vhat - p;
 
     //TODO: Are Bold and Bnew in the right order?
     // III - first half
@@ -541,24 +547,24 @@ class EQRigidBody : public NonlinearFunction
     Matrix<double> B_force(3, 3); */
     
     // force<double, double> (0.5*(aold+anew), Bhalf, a_force, B_force); // half or old?
-    f.Range(12, 15) = (2/h_)*(p.Range(0, 3) - phatold.Range(0, 3)) - rbs_.get_translation(force_half_, 0);
-    f.Range(15, 18) = inv_hat_map((Transpose(Bold) * ((2/h_)*(Bhalf*hat_map(p.Range(3, 6)) - Bold*hat_map(phatold.Range(3, 6))) - rbs_.get_rotation(force_half_, 0)))); //TODO: Are Bold and Bnew in the right order?
+    //f.Range(12, 15) = (2/h_)*(p.Range(0, 3) - phatold.Range(0, 3)) - rbs_.get_translation(force_half_, 0);
+    //f.Range(15, 18) = inv_hat_map((Transpose(Bold) * ((2/h_)*(Bhalf*hat_map(p.Range(3, 6)) - Bold*hat_map(phatold.Range(3, 6))) - rbs_.get_rotation(force_half_, 0)))); //TODO: Are Bold and Bnew in the right order?
 
     // III - second half
     // force<double, double> (anew, Bnew, a_force, B_force);
-    f.Range(18, 21) = (2/h_)*(phat.Range(0, 3) - p.Range(0, 3)) - rbs_.get_translation(force_new_, 0);
+    f.Range(6, 9) = (2/h_)*(p.Range(0, 3) - phatold.Range(0, 3)) - rbs_.get_translation(force_new_, 0);
     // std::cout << get_translation(force_new_, 0) << std::endl;
-    f.Range(21, 24) = inv_hat_map((Transpose(Bnew) * ((2/h_)*(Bnew*hat_map(phat.Range(3, 6)) - Bhalf*hat_map(p.Range(3, 6))) - rbs_.get_rotation(force_new_, 0)))); //TODO: Are Bold and Bnew in the right order?
+    f.Range(9, 12) = inv_hat_map((Transpose(Bnew) * ((2/h_)*(Bnew*hat_map(p.Range(3, 6)) - Bold*hat_map(phatold.Range(3, 6))) - rbs_.get_rotation(force_new_, 0)))); //TODO: Are Bold and Bnew in the right order?
 
     // Bnew must be orthonormal
     Matrix<double> eye = Diagonal(3, 1);
     auto c = Transpose(Bnew)* Bnew + (-1)*eye;
-    f(0 + 24)=c(0, 0);
-    f(1 + 24)=c(1, 0);
-    f(2 + 24)=c(2, 0);
-    f(3 + 24)=c(1, 1);
-    f(4 + 24)=c(2, 1);
-    f(5 + 24)=c(2, 2);
+    f(0 + 12)=c(0, 0);
+    f(1 + 12)=c(1, 0);
+    f(2 + 12)=c(2, 0);
+    f(3 + 12)=c(1, 1);
+    f(4 + 12)=c(2, 1);
+    f(5 + 12)=c(2, 2);
   }
 
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
@@ -566,7 +572,6 @@ class EQRigidBody : public NonlinearFunction
     dNumeric(*this, x, df);
   }
 };
-
 
 class EQRigidBodySystem : public NonlinearFunction
 {
@@ -675,15 +680,15 @@ class EQRigidBodySystem : public NonlinearFunction
 
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
   {
-    
+    // transformation * N, lambda, mu 
     Vector<double> transformations_new = rbs_.xToTransformations(x);
 
     // calculate forces globally
     Vector<double> forces_half(transformations_new.Size());
     Vector<double> state_old(dim_per_body*_num_bodies + _num_beams);
     rbs_.getState(state_old);
-    Vector<double> transformations_old = 0.5*(rbs_.xToTransformations(rbs_.stateToX(state_old))+transformations_new);
-
+    Vector<double> transformations_old = (rbs_.xToTransformations(rbs_.stateToX(state_old)));
+    //transformation_old.Range(12,18)=
  
 
     force<>(transformations_old, forces_half);

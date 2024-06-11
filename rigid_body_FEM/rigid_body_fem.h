@@ -902,7 +902,6 @@ class EQRigidBodyProjC : public NonlinearFunction{
     }
     auto m = constr_force_;
 
-    std::cout <<std::fixed<<"M"<< m  <<"//" << full_p<<std::endl;
 
     f = 
       m.Cols(dim_per_transform*body_index_,dim_per_transform*(body_index_+1))*full_p;
@@ -977,14 +976,14 @@ class EQProjection : public NonlinearFunction
     Vector<double> c(rbs_.numBodies()*rbs_.numBeams());
     _funcC->Evaluate(x,c);
     for(int i=0;i<rbs_.numBodies();i++)
-      f.Range(_func->DimF(), DimF()) += c.Range(i*rbs_.numBeams(),(i+1)*rbs_.numBeams());
+      f.Range(_func->DimF(), DimF()) = c.Range(i*rbs_.numBeams(),(i+1)*rbs_.numBeams());
   }
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
   {
     dNumeric(*this,x,df);
-        std::cout << "ahlll";
 
-    df.Row(6).Range(3,7)=0;
+
+    //df.Row(6).Range(3,7)=0;
     std::cout <<std::fixed<< df << std::endl;
   }
 };

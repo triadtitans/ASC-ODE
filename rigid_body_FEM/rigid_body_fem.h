@@ -473,6 +473,117 @@ class RBS_FEM{
     return Connector{ConnectorType::fix, {0,0,0}, 0};
   }
 
+    template <typename T>
+  T calculate_gravitation_V(Vector<T> a, Matrix<T> B, size_t body_index)  {
+    auto t = Transformation<T>();
+    t.setRotation_from_matrix(B);
+    t.setTranslation(a(0), a(1), a(2));
+    
+    return (-1)*bodies()[body_index].mass() * t.apply(bodies()[body_index].center()) * gravity();
+  }
+
+  template<typename T>
+  Vector<T> G(VectorView<T> transforms)  {
+    Vector<T> res(numBeams());
+    for (size_t i=0; i < numBeams(); i++){
+      Beam& beam = beams()[i];
+      Connector c1 = beam.a;
+      size_t l = c1.body_index;
+      Connector c2 = beam.b;
+      size_t k = c2.body_index;
+
+      Vec<3, T> pos1 = c1.absPos(get_translation(transforms, l), get_rotation(transforms, l));
+      Vec<3, T> pos2 = c2.absPos(get_translation(transforms, k), get_rotation(transforms, k));
+      T norm = (pos1-pos2)*(pos1-pos2)-beam.length*beam.length; // shall be zero
+      // Vorzeichen?
+      res(i) = norm; // transforms[dim_per_transform*_num_bodies + i] is lagrange parameter
+    }
+    return res;
+  }
+
+  template<typename T>
+  T V (VectorView<T> transforms)  {
+    T potential = 0;
+
+    // gravity
+    for (size_t i=0; i < numBodies(); i++){
+      potential += calculate_gravitation_V(get_translation(transforms, i), get_rotation(transforms, i), i);
+    }
+
+    // spring potential
+    for (Spring& spr:springs()) {
+      // auto& s = rbs_.springs()[i];
+      //Evaluate distance between connectors, and compare with beam length
+      Connector c1 = spr.a;
+      size_t l = c1.body_index;
+      Connector c2 = spr.b;
+      size_t k = c2.body_index;
+
+      Vec<3, T> pos1 = c1.absPos(get_translation(transforms, l), get_rotation(transforms, l));
+      Vec<3, T> pos2 = c2.absPos(get_translation(transforms, k), get_rotation(transforms, k));
+      T norm = Norm(pos1-pos2)-spr.length;
+      potential += (1/2.0)*spr.stiffness*(norm * norm);
+    }
+
+    potential += transforms.Range(dim_per_transform*numBodies(),dim_per_transform*numBodies()+numBeams()) * G(transforms);
+
+    return potential;
+  }
+
+  template<typename T, typename S>
+  void constraint_force(VectorView<T> transform, MatrixView<S>& f)  {
+    Vector<AutoDiffDiff<1, T>> transform_diff = transform;
+    /*
+    for (size_t i=0; i < transform.Size(); i++){
+      transform_diff(i).DValue(0) = 1;
+      for(size_t j=0;j<numBeams();j++)
+        f(j,i) = G<>(transform_diff)(j).DValue(0);
+      // std::cout << V<>(transform_diff).Value() << std::endl;
+      transform_diff(i).DValue(0) = 0;
+    }*/
+    
+    double eps = 1e-3;
+    Vector<> xl(transform.Size()), xr(transform.Size()), fl(1), fr(1);
+    for (size_t i = 0; i < transform.Size(); i++)
+      {
+        xl = transform;
+        xl(i) -= eps;
+        xr = transform;
+        xr(i) += eps;
+        fl = G (xl);
+        fr = G (xr);
+        f.Col(i) = 1/(2*eps) * (fr-fl);
+      } 
+
+  }
+
+  template<typename T, typename S>
+  void force(VectorView<T> transform, VectorView<S>& f)  {
+    Vector<AutoDiffDiff<1, T>> transform_diff = transform;
+    
+    for (size_t i=0; i < transform.Size(); i++){
+      transform_diff(i).DValue(0) = 1;
+      f(i) = V<>(transform_diff).DValue(0);
+      // std::cout << V<>(transform_diff).Value() << std::endl;
+      transform_diff(i).DValue(0) = 0;
+    }
+
+    /* double eps = 1e-3;
+    Vector<> xl(transform.Size()), xr(transform.Size()), fl(1), fr(1);
+    for (size_t i = 0; i < transform.Size(); i++)
+      {
+        xl = transform;
+        xl(i) -= eps;
+        xr = transform;
+        xr(i) += eps;
+        fl = V (xl);
+        fr = V (xr);
+        f(i) = 1/(2*eps) * (fr(0)-fl(0));
+      } */
+
+      // std::cout << f << std::endl;
+  }
+
 };
 
 
@@ -486,20 +597,16 @@ class EQRigidBody : public NonlinearFunction
   RBS_FEM& rbs_; // parent rigid body system
   size_t body_index_; // index within _bodies of parent rbs_
 
-  Vector<double> force_old_;
-  Vector<double> force_new_;
+  Vector<double> force_;
   
   public:
   EQRigidBody(Transformation<double> Q, Vector<double> Phat, double h, RBS_FEM& rbs, size_t body_index):
-      h_(h), Q_(Q), phatold(Phat), rbs_(rbs), body_index_(body_index), force_old_(dim_per_transform), force_new_(dim_per_transform) {};
+      h_(h), Q_(Q), phatold(Phat), rbs_(rbs), body_index_(body_index), force_(dim_per_transform) {};
   size_t DimX() const  { return 18; }
   size_t DimF() const  { return 18; }
 
-  Vector<double>& force_old(){
-    return force_old_;
-  }
-  Vector<double>& force_new(){
-    return force_new_;
+  Vector<double>& force(){
+    return force_;
   }
 
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
@@ -552,9 +659,9 @@ class EQRigidBody : public NonlinearFunction
 
     // III - second half
     // force<double, double> (anew, Bnew, a_force, B_force);
-    f.Range(6, 9) = (2/h_)*(p.Range(0, 3) - phatold.Range(0, 3)) - rbs_.get_translation(force_old_, 0);
+    f.Range(6, 9) = (2/h_)*(p.Range(0, 3) - phatold.Range(0, 3)) - rbs_.get_translation(force_, 0);
     // std::cout << get_translation(force_new_, 0) << std::endl;
-    f.Range(9, 12) = inv_hat_map((Transpose(Bnew) * ((2/h_)*(Bnew*hat_map(p.Range(3, 6)) - Bold*hat_map(phatold.Range(3, 6))) - rbs_.get_rotation(force_old_, 0)))); //TODO: Are Bold and Bnew in the right order?
+    f.Range(9, 12) = inv_hat_map((Transpose(Bnew) * ((2/h_)*(Bnew*hat_map(p.Range(3, 6)) - Bold*hat_map(phatold.Range(3, 6))) - rbs_.get_rotation(force_, 0)))); //TODO: Are Bold and Bnew in the right order?
 
     // Bnew must be orthonormal
     Matrix<double> eye = Diagonal(3, 1);
@@ -572,6 +679,12 @@ class EQRigidBody : public NonlinearFunction
     dNumeric(*this, x, df);
   }
 };
+
+
+
+
+
+
 
 class EQRigidBodySystem : public NonlinearFunction
 {
@@ -600,83 +713,7 @@ class EQRigidBodySystem : public NonlinearFunction
   }
 
 
-  template <typename T>
-  T calculate_gravitation_V(Vector<T> a, Matrix<T> B, size_t body_index) const {
-    auto t = Transformation<T>();
-    t.setRotation_from_matrix(B);
-    t.setTranslation(a(0), a(1), a(2));
-    
-    return (-1)*rbs_.bodies()[body_index].mass() * t.apply(rbs_.bodies()[body_index].center()) * rbs_.gravity();
-  }
 
-  
-  template<typename T>
-  T V (VectorView<T> transforms) const {
-    T potential = 0;
-
-    // gravity
-    for (size_t i=0; i < _num_bodies; i++){
-      potential += calculate_gravitation_V(rbs_.get_translation(transforms, i), rbs_.get_rotation(transforms, i), i);
-    }
-
-    // spring potential
-    for (Spring& spr: rbs_.springs()) {
-      // auto& s = rbs_.springs()[i];
-      //Evaluate distance between connectors, and compare with beam length
-      Connector c1 = spr.a;
-      size_t l = c1.body_index;
-      Connector c2 = spr.b;
-      size_t k = c2.body_index;
-
-      Vec<3, T> pos1 = c1.absPos(rbs_.get_translation(transforms, l), rbs_.get_rotation(transforms, l));
-      Vec<3, T> pos2 = c2.absPos(rbs_.get_translation(transforms, k), rbs_.get_rotation(transforms, k));
-      T norm = Norm(pos1-pos2)-spr.length;
-      potential += (1/2.0)*spr.stiffness*(norm * norm);
-    }
-
-    for (size_t i=0; i < rbs_.numBeams(); i++){
-      Beam& beam = rbs_.beams()[i];
-      Connector c1 = beam.a;
-      size_t l = c1.body_index;
-      Connector c2 = beam.b;
-      size_t k = c2.body_index;
-
-      Vec<3, T> pos1 = c1.absPos(rbs_.get_translation(transforms, l), rbs_.get_rotation(transforms, l));
-      Vec<3, T> pos2 = c2.absPos(rbs_.get_translation(transforms, k), rbs_.get_rotation(transforms, k));
-      T norm = (pos1-pos2)*(pos1-pos2)-beam.length*beam.length; // shall be zero
-      // Vorzeichen?
-      potential += transforms(dim_per_transform*_num_bodies + i) * norm; // transforms[dim_per_transform*_num_bodies + i] is lagrange parameter
-    }
-
-    return potential;
-  }
-
-  template<typename T, typename S>
-  void force(VectorView<T> transform, VectorView<S>& f) const {
-    Vector<AutoDiffDiff<1, T>> transform_diff = transform;
-    
-    for (size_t i=0; i < transform.Size(); i++){
-      transform_diff(i).DValue(0) = 1;
-      f(i) = V<>(transform_diff).DValue(0);
-      // std::cout << V<>(transform_diff).Value() << std::endl;
-      transform_diff(i).DValue(0) = 0;
-    }
-
-    /* double eps = 1e-3;
-    Vector<> xl(transform.Size()), xr(transform.Size()), fl(1), fr(1);
-    for (size_t i = 0; i < transform.Size(); i++)
-      {
-        xl = transform;
-        xl(i) -= eps;
-        xr = transform;
-        xr(i) += eps;
-        fl = V (xl);
-        fr = V (xr);
-        f(i) = 1/(2*eps) * (fr(0)-fl(0));
-      } */
-
-      // std::cout << f << std::endl;
-  }
 
   void Evaluate (VectorView<double> x, VectorView<double> f) const override
   {
@@ -695,18 +732,18 @@ class EQRigidBodySystem : public NonlinearFunction
  
 
     //Force at t0 but with variing constraint
-    force<>(transformations_old, forces_old);
+    rbs_.force<>(transformations_old, forces_old);
     Vector<double> forces_new(transformations_new.Size());
 
     //Force at t1 only used to violation of constraint
-    force<>(transformations_new, forces_new);
+    rbs_.force<>(transformations_new, forces_new);
 
     // std::cout << "new: " << forces_new << std::endl << "half: " << forces_half << std::endl;
     // std::cout << "new: " << transformations_new << std::endl << "half: " << transformations_half << std::endl;
     // std::cout << _num_bodies << std::endl;
     for (size_t i = 0; i < _num_bodies; i++){
-      _functions[i]->force_old() = forces_old.Range(i * dim_per_transform, (i+1) * dim_per_transform);
-      _functions[i]->force_new() = forces_new.Range(i * dim_per_transform, (i+1) * dim_per_transform);
+      _functions[i]->force() = forces_old.Range(i * dim_per_transform, (i+1) * dim_per_transform);
+    
       // std::cout << "new: " << _functions[i]->force_new() << std::endl << "half: " << _functions[i]->force_half() << std::endl;
     }
     _func->Evaluate(x,f);
@@ -754,6 +791,204 @@ class EQRigidBodySystem : public NonlinearFunction
   }
 };
 
+
+// system of equations for one rigid body
+class EQRigidBodyProj : public NonlinearFunction
+{
+  double h_; // timestep duration
+  Transformation<double> Q_; // current body transformation
+  Vector<double> p; // current momentum
+  RBS_FEM& rbs_; // parent rigid body system
+  size_t body_index_; // index within _bodies of parent rbs_
+
+  Vector<double> force_;
+  Matrix<double> constr_force_;
+  Vector<double> velocity_constraint_;
+  
+  public:
+  EQRigidBodyProj(Transformation<double> Q, Vector<double> p, double h, RBS_FEM& rbs, size_t body_index):
+      h_(h), Q_(Q), p(p), rbs_(rbs), body_index_(body_index),  force_(dim_per_transform),
+      constr_force_(dim_per_transform*rbs.numBodies(),rbs.numBeams()),
+      velocity_constraint_(rbs.numBeams()) {};
+  size_t DimX() const  { return 6; }
+  size_t DimF() const  { return 6; }
+  Vector<double>& force(){
+    return force_;
+  }
+
+  Matrix<double>& constr_force(){
+    return constr_force_;
+  }
+
+  Vector<double>& velocity_constraint(){
+    return velocity_constraint_;
+  }
+
+  void Evaluate (VectorView<double> x, VectorView<double> f) const override
+  {
+    // x (phat (6))
+    Vector<double> phat = x.Range(0, 6);
+
+
+    // known constants
+    Vector<double> a = Q_.getTranslation();
+    Matrix<double> B = Q_.getRotation();
+
+    // III - second half
+    // force<double, double> (anew, Bnew, a_force, B_force);
+    f.Range(0, 3) = (2/h_)*(phat.Range(0, 3) - p.Range(0, 3)) - rbs_.get_translation(force_, 0);
+    f.Range(3, 6) = inv_hat_map((Transpose(B) * ((2/h_)*(B*hat_map(phat.Range(3, 6)) - B*hat_map(p.Range(3, 6))) - rbs_.get_rotation(force_, 0)))); //TODO: Are Bold and Bnew in the right order?
+
+
+  }
+  void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
+  {
+    dNumeric(*this, x, df);
+  }
+};
+
+class EQRigidBodyProjC : public NonlinearFunction{
+  double h_; // timestep duration
+  Transformation<double> Q_; // current body transformation
+  Vector<double> p; // current momentum
+  RBS_FEM& rbs_; // parent rigid body system
+  size_t body_index_; // index within _bodies of parent rbs_
+
+  Vector<double> force_;
+  Matrix<double> constr_force_;
+  Vector<double> velocity_constraint_;
+  
+  public:
+  EQRigidBodyProjC(Transformation<double> Q, Vector<double> p, double h, RBS_FEM& rbs, size_t body_index):
+      h_(h), Q_(Q), p(p), rbs_(rbs), body_index_(body_index),  force_(dim_per_transform),
+      constr_force_(rbs.numBeams(),dim_per_transform*rbs.numBodies()),
+      velocity_constraint_(rbs.numBeams()) {};
+  size_t DimX() const  { return 6; }
+  size_t DimF() const  { return rbs_.numBeams(); }
+  Vector<double>& force(){
+    return force_;
+  }
+
+  Matrix<double>& constr_force() {
+    return constr_force_;
+  }
+
+  Vector<double>& velocity_constraint(){
+    return velocity_constraint_;
+  }
+
+  void Evaluate (VectorView<double> x, VectorView<double> f) const override
+  {
+    // x (phat (6))
+
+    Vector<double> phat = x.Range(0, 6);
+
+    
+    // known constants
+    Vector<double> a = Q_.getTranslation();
+    Matrix<double> B = Q_.getRotation();
+
+    // III - second half
+    // force<double, double> (anew, Bnew, a_force, B_force);
+  
+    Matrix<double> B_p_mat = hat_map(phat.Range(3,6));
+    Vector<double> full_p(12);
+    full_p.Range(0,3)=phat.Range(0,3);
+
+    for(int i=0;i<3;i++){
+      for(int j=0;j<3;j++){
+        full_p(3+i*3+j)=B_p_mat(i,j);
+      }
+    }
+    auto m = constr_force_;
+
+    std::cout <<std::fixed<<"M"<< m  <<"//" << full_p<<std::endl;
+
+    f = 
+      m.Cols(dim_per_transform*body_index_,dim_per_transform*(body_index_+1))*full_p;
+  }  
+  void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
+  {
+    dNumeric(*this, x, df);
+
+  }
+};
+  
+
+
+class EQProjection : public NonlinearFunction
+{
+  RBS_FEM& rbs_;
+  std::shared_ptr<StackedFunction> _func;
+  std::shared_ptr<StackedFunction> _funcC;
+  std::vector<std::shared_ptr<EQRigidBodyProj>> _functions; // for body equations
+  std::vector<std::shared_ptr<EQRigidBodyProjC>> _functionsC; // for body equations
+  size_t _num_bodies;
+  size_t _num_beams;
+  Vector<double> state;
+
+ public:
+  size_t DimX() const  { return 6*_num_bodies + _num_beams; }
+  size_t DimF() const  { return  6*_num_bodies + _num_beams; }
+
+  EQProjection(RBS_FEM& rbs, Vector<double> state, size_t num_bodies, size_t num_beams, double h):
+    rbs_(rbs), _num_bodies(num_bodies), _num_beams(num_beams),state(state)
+  {
+    _func = std::make_shared<StackedFunction>();
+    _funcC = std::make_shared<StackedFunction>();
+    for(int i=0;i<num_bodies;i++){      
+      auto q = state.Range(i*dim_per_body,i*dim_per_body+12);
+      auto p = state.Range(i*dim_per_body+12,i*dim_per_body+18); 
+      std::shared_ptr<EQRigidBodyProj> eq = std::make_shared<EQRigidBodyProj>(Transformation<double>(q), p, h, rbs_, i); //(Transformation<double>(q), p, h, rbs_, i);
+      std::shared_ptr<EQRigidBodyProjC> eqC = std::make_shared<EQRigidBodyProjC>(Transformation<double>(q), p, h, rbs_, i); //(Transformation<double>(q), p, h, rbs_, i);
+
+      _func->addFunction(eq);
+      _funcC->addFunction(eqC);
+      _functions.push_back(eq);
+      _functionsC.push_back(eqC);
+    }
+  }
+
+  void Evaluate (VectorView<double> x, VectorView<double> f) const  override
+  {
+    // x = transformation * N, lambda, mu 
+
+    // calculate forces globally
+    Vector<double> force(state.Size());
+
+    Vector<double> transformation = (rbs_.xToTransformations(rbs_.stateToX(state)));
+    transformation.Range(dim_per_transform*_num_bodies,dim_per_transform*_num_bodies+_num_beams)
+          =x.Range(_num_bodies*6,_num_bodies*6+_num_beams);
+ 
+
+    rbs_.force<>(transformation, force);
+
+    Matrix<double> constraint_force(rbs_.numBeams(),transformation.Size()-_num_beams);
+    rbs_.constraint_force(transformation.Range(0,constraint_force.Width()) , constraint_force);
+
+    // std::cout << "new: " << transformations_new << std::endl << "half: " << transformations_half << std::endl;
+    // std::cout << _num_bodies << std::endl;
+    for (size_t i = 0; i < _num_bodies; i++){
+      _functions[i]->force() = force.Range(i * dim_per_transform, (i+1) * dim_per_transform);
+      _functionsC[i]->constr_force() = constraint_force;
+      // std::cout << "new: " << _functions[i]->force_new() << std::endl << "half: " << _functions[i]->force_half() << std::endl;
+    }
+    _func->Evaluate(x,f);
+    Vector<double> c(rbs_.numBodies()*rbs_.numBeams());
+    _funcC->Evaluate(x,c);
+    for(int i=0;i<rbs_.numBodies();i++)
+      f.Range(_func->DimF(), DimF()) += c.Range(i*rbs_.numBeams(),(i+1)*rbs_.numBeams());
+  }
+  void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
+  {
+    dNumeric(*this,x,df);
+        std::cout << "ahlll";
+
+    df.Row(6).Range(3,7)=0;
+    std::cout <<std::fixed<< df << std::endl;
+  }
+};
+
 /* void simulateRigidBody(RigidBody_FEM& rb, double tend, double steps, std::function<void(int,double,VectorView<double>)> callback = nullptr ){
   // solution variable for newton
   Vector<double> state(30);
@@ -789,6 +1024,7 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
 
   Vector<double> state(dim_per_body*rbs.numBodies() + rbs.numBeams());
   Vector<double> x(eq_per_body*rbs.numBodies() + rbs.numBeams());
+  Vector<double> y(6*rbs.numBodies() + rbs.numBeams());
 
   // copy over current values 
   rbs.getState(state);
@@ -806,11 +1042,19 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
     //eq->EvaluateDeriv(x,df);
     //std::cout << test<< std::endl;
     //std::cout << df << std::endl;
-    // std::cout << "before newton" << std::endl;
+    //std::cout << "before newton" << std::endl;
     NewtonSolver(eq, x, 1e-10, 10, callback);
 
     state = rbs.xToState(x);
 
+    std::shared_ptr<EQProjection> eqProj = std::make_shared<EQProjection>(rbs, state, rbs.numBodies(), rbs.numBeams(), tend/steps);
+
+    NewtonSolver(eqProj, y, 1e-10, 10,[](int i, double t, VectorView<double> q) { 
+                    std::cout<<std::fixed << "Projection newton-iteration: " << i << " newton-error: " << std::scientific << t<<std::endl;});
+
+    for(int i=0; i<rbs.numBodies();i++){
+      state.Range(i*dim_per_body+12,i*dim_per_body+18)=y.Range(i*(6+rbs.numBeams())+0,i*(6+rbs.numBeams())+6);
+    }
   
     // std::cout << state << std::endl;
 

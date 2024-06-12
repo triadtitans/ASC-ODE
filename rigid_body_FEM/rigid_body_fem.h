@@ -900,11 +900,11 @@ class EQRigidBodyProjC : public NonlinearFunction{
         full_p(3+i*3+j)=B_p_mat(i,j);
       }
     }
+    //std::cout << constr_force_;
     auto m = constr_force_;
 
-
     f = 
-      m.Cols(dim_per_transform*body_index_,dim_per_transform*(body_index_+1))*full_p;
+      m.Cols(dim_per_transform*body_index_,dim_per_transform)*full_p;
   }  
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
   {
@@ -975,8 +975,10 @@ class EQProjection : public NonlinearFunction
     _func->Evaluate(x,f);
     Vector<double> c(rbs_.numBodies()*rbs_.numBeams());
     _funcC->Evaluate(x,c);
+    Vector<double> tmp(rbs_.numBeams()) ;
     for(int i=0;i<rbs_.numBodies();i++)
-      f.Range(_func->DimF(), DimF()) = c.Range(i*rbs_.numBeams(),(i+1)*rbs_.numBeams());
+      tmp = c.Range(i*rbs_.numBeams(),(i+1)*rbs_.numBeams())+tmp;
+    f.Range(_func->DimF(), DimF())=tmp;
   }
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
   {
@@ -984,7 +986,7 @@ class EQProjection : public NonlinearFunction
 
 
     //df.Row(6).Range(3,7)=0;
-    std::cout <<std::fixed<< df << std::endl;
+    //std::cout <<std::fixed<< df << std::endl;
   }
 };
 
@@ -1048,11 +1050,13 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
 
     std::shared_ptr<EQProjection> eqProj = std::make_shared<EQProjection>(rbs, state, rbs.numBodies(), rbs.numBeams(), tend/steps);
 
-    NewtonSolver(eqProj, y, 1e-10, 10,[](int i, double t, VectorView<double> q) { 
-                    std::cout<<std::fixed << "Projection newton-iteration: " << i << " newton-error: " << std::scientific << t<<std::endl;});
+    NewtonSolver(eqProj, y, 1e-10, 10);/*[](int i, double t, VectorView<double> q) { 
+                    std::cout<<std::fixed << "Projection newton-iteration: " << i << " newton-error: " << std::scientific << t<<std::endl;});*/
 
     for(int i=0; i<rbs.numBodies();i++){
-      state.Range(i*dim_per_body+12,i*dim_per_body+18)=y.Range(i*(6+rbs.numBeams())+0,i*(6+rbs.numBeams())+6);
+    
+      //state.Range(i*(dim_per_body+rbs.numBeams())+12,i*(dim_per_body+rbs.numBeams())+18)=
+       // y.Range(i*(6+rbs.numBeams())+0,i*(6+rbs.numBeams())+6);
     }
   
     // std::cout << state << std::endl;

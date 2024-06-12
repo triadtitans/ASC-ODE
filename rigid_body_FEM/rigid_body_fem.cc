@@ -15,7 +15,7 @@ int main()
   //q(12)=0; q(13)=0;q(14)=0; q(15)=0; q(16)=0; q(17)=0; 
   Vector<double> phat(6);
   phat = 0;
-  phat(3) = 0.01;
+  //phat(3) = 0.01;
  
   Matrix<double> inertia_matrix(3, 3);
   MatrixView<double> inertia_v (inertia_matrix);
@@ -29,11 +29,12 @@ int main()
   rb2.setPhat_v(3, 0.01); */
 
   RBS_FEM rbs;
-  rbs.gravity() = {0, 0, 0.01};
+  rbs.gravity() = {0, 0, 1};
   /* rbs.bodies().push_back(rb);
   rbs.bodies().push_back(rb2); */
 
   Connector c1 = rbs.addBody(rb);
+  Connector c3 = rbs.addBody(rb2);
   Connector c2{ConnectorType::fix, {0, 0, 3}, 0}; //= rbs.addBody(rb2);
   /* c1.pos = {1, 2, 3};
   c2.pos = {4, 5, 6}; */
@@ -49,10 +50,10 @@ int main()
                       <<"\t"<< "           " << q(6) << " ," << q(7) << ", "<<", " << q(8) << "} " << std::endl
                       <<"\t"<< "           " << q(9) << " ," << q(10) << ", "<<", " << q(11) << "} " << std::endl << std::endl
                       << "Body2 newton-iteration: " << i << " newton-error: " << std::scientific << t << std::fixed << std::endl
-                      <<"\t"<< "Translation =" << q(0+30) << " ," << q(1+30) << ", "<<", " << q(2+30) << "} " << std::endl
-                      <<"\t"<< " Rotation: " << q(3+30) << " ," << q(4+30) << ", "<<", " << q(5+30) << "} " << std::endl
-                      <<"\t"<< "           " << q(6+30) << " ," << q(7+30) << ", "<<", " << q(8+30) << "} " << std::endl
-                      <<"\t"<< "           " << q(9+30) << " ," << q(10+30) << ", "<<", " << q(11+30) << "} " << std::endl << std::endl; }                   
+                      <<"\t"<< "Translation =" << q(0+18) << " ," << q(1+18) << ", "<<", " << q(2+18) << "} " << std::endl
+                      <<"\t"<< " Rotation: " << q(3+18) << " ," << q(4+18) << ", "<<", " << q(5+18) << "} " << std::endl
+                      <<"\t"<< "           " << q(6+18) << " ," << q(7+18) << ", "<<", " << q(8+18) << "} " << std::endl
+                      <<"\t"<< "           " << q(9+18) << " ," << q(10+18) << ", "<<", " << q(11+18) << "} " << std::endl << std::endl; }                   
                    );
   std::cout << "}";
 }

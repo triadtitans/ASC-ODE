@@ -3,7 +3,7 @@
 
 int main()
 {
-  double tend = 0.25*10;
+  double tend = 0.25;
   double steps = 5*10;
   Vector<double> q ( 12 );
   q(0)=0; q(4)=0; q(8)=0; 
@@ -27,7 +27,6 @@ int main()
 
   RigidBody_FEM rb2;
   rb2.setPhat_v(3, 0.01); */
-
   RBS_FEM rbs;
   rbs.gravity() = {0, 0, 0.01};
   /* rbs.bodies().push_back(rb);
@@ -38,6 +37,7 @@ int main()
   /* c1.pos = {1, 2, 3};
   c2.pos = {4, 5, 6}; */
   double len = Norm(rb.absolutePosOf(c1.pos) - rb2.absolutePosOf(c2.pos));
+  // rbs.addBody(rb2);
 
   Beam beam{0, c1, c2};
   rbs.addBeam(beam);
@@ -48,11 +48,11 @@ int main()
                       <<"\t"<< " Rotation: " << q(3) << " ," << q(4) << ", "<<", " << q(5) << "} " << std::endl
                       <<"\t"<< "           " << q(6) << " ," << q(7) << ", "<<", " << q(8) << "} " << std::endl
                       <<"\t"<< "           " << q(9) << " ," << q(10) << ", "<<", " << q(11) << "} " << std::endl << std::endl
-                      << "Body2 newton-iteration: " << i << " newton-error: " << std::scientific << t << std::fixed << std::endl
+                      /* << "Body2 newton-iteration: " << i << " newton-error: " << std::scientific << t << std::fixed << std::endl
                       <<"\t"<< "Translation =" << q(0+30) << " ," << q(1+30) << ", "<<", " << q(2+30) << "} " << std::endl
                       <<"\t"<< " Rotation: " << q(3+30) << " ," << q(4+30) << ", "<<", " << q(5+30) << "} " << std::endl
                       <<"\t"<< "           " << q(6+30) << " ," << q(7+30) << ", "<<", " << q(8+30) << "} " << std::endl
-                      <<"\t"<< "           " << q(9+30) << " ," << q(10+30) << ", "<<", " << q(11+30) << "} " << std::endl << std::endl; }                   
+                      <<"\t"<< "           " << q(9+30) << " ," << q(10+30) << ", "<<", " << q(11+30) << "} " << std::endl */ << std::endl; }                   
                    );
   std::cout << "}";
 }

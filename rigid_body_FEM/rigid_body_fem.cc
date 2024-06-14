@@ -28,7 +28,7 @@ int main()
   RigidBody_FEM rb2;
   rb2.setPhat_v(3, 0.01); */
   RBS_FEM rbs;
-  rbs.gravity() = {0, 0, 0.01};
+  rbs.gravity() = {0, 0, 1};
   /* rbs.bodies().push_back(rb);
   rbs.bodies().push_back(rb2); */
 
@@ -37,7 +37,7 @@ int main()
   /* c1.pos = {1, 2, 3};
   c2.pos = {4, 5, 6}; */
   double len = Norm(rb.absolutePosOf(c1.pos) - rb2.absolutePosOf(c2.pos));
-  // rbs.addBody(rb2);
+   rbs.addBody(rb2);
 
   Beam beam{0, c1, c2};
   rbs.addBeam(beam);

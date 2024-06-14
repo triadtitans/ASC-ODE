@@ -568,8 +568,8 @@ class EQRigidBody : public NonlinearFunction
     // std::cout << vskew << "\n" << std::endl;
 
     // I
-    f.Range(0, 3) = (1/h_)*(anew - aold) - vtrans - dp_gv_old_; // D_p(mü*D_2(C_v(q_old, phatold)))
-    f.Range(3, 6) = (1/h_)*inv_hat_map(Transpose(Bhalf)*(Bnew - Bold)) - vskew;
+    f.Range(0, 3) = (1/h_)*(anew - aold) - vtrans - dp_gv_new_.Range(0,3); // D_p(mü*D_2(C_v(q_old, phatold)))
+    f.Range(3, 6) = (1/h_)*inv_hat_map(Transpose(Bhalf)*(Bnew - Bold)) - vskew- dp_gv_new_.Range(3,6);
 
     // II
     Vector<double> vhat(6);
@@ -664,8 +664,9 @@ class EQRigidBodySystem : public NonlinearFunction
     
     for (size_t i=0; i < transform.Size(); i++){
       transform_diff(i).DValue(0) = 1;
+      auto tmp = g<>(transform_diff);
       for (size_t j=0; j < _num_beams; j++){
-        deriv(j, i) = g<>(transform_diff)(j).DValue(0);
+        deriv(j, i) =tmp(j).DValue(0);
       }
       transform_diff(i).DValue(0) = 0;
     }
@@ -675,7 +676,7 @@ class EQRigidBodySystem : public NonlinearFunction
     Matrix<double> inv(_num_bodies*6, _num_bodies*6);
 
     for (size_t b=0; b < _num_bodies; b++){
-      inv.Cols(b*6, (b + 1)*6).Rows(b*6, (b + 1)*6) = inverse(rbs_.bodies()[b].Mass_matrix());
+      inv.Cols(b*6, 6).Rows(b*6, 6) = inverse(rbs_.bodies()[b].Mass_matrix());
     }
     return inv;
   }
@@ -689,7 +690,7 @@ class EQRigidBodySystem : public NonlinearFunction
     Matrix<T> Gq(_num_beams, dim_per_transform*_num_bodies);
     G(q, Gq);
 
-    Vector<T> MInvP = massMatrixInverse() * p;
+    Vector<T> MInvP = /*massMatrixInverse() * */p;
     Vector<T> MInvPFull(dim_per_transform*_num_bodies);
 
     Matrix<T> omega(3, 3);
@@ -842,7 +843,7 @@ class EQRigidBodySystem : public NonlinearFunction
     // _func->EvaluateDeriv(x,df.Rows(0,_func->DimF()).Cols(0,_func->DimF()));
 
     // double eps = 1e-3;
-    std::cout << df << std::endl << std::endl;
+    //std::cout << df << std::endl << std::endl;
     // // lower left block of matrix, numerical derivative
 
     // Vector<> xl(_func->DimX()), xr(_func->DimX()), fl(_num_beams), fr(_num_beams);
@@ -928,7 +929,7 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
     //std::cout << df << std::endl;
     // std::cout << "before newton" << std::endl;
     NewtonSolver(eq, x, 1e-10, 10, callback);
-    std::cout <<"l"<< x<<std::endl;
+    //std::cout <<"l"<< x<<std::endl;
     state = rbs.xToState(x);
 
   

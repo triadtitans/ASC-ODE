@@ -2,6 +2,7 @@
 #define Newton_h
 
 #include "nonlinfunc.h"
+#include "lapack_interface.h"
 
 namespace ASC_ode
 {
@@ -21,9 +22,12 @@ namespace ASC_ode
         //std::cout << "|res| = " << Norm(res) << std::endl;
         func->EvaluateDeriv(x, fprime);
         //std::cout << "fprime = " << fprime << std::endl;
-        fprime = inverse(fprime);
+        // fprime = inverse(fprime);
+        LapackLU<Ordering::RowMajor> lu_fprime(fprime);
+        Matrix<double> fprime_inv(lu_fprime.Inverse());
+        // fprime = lu_fprime.Inverse();
         //std::cout << "inv fprime = " << fprime << std::endl;
-        x -= fprime*res;
+        x -= fprime_inv*res;
         //std::cout << "new x = " << x << std::endl;
 
         double err = Norm(res);

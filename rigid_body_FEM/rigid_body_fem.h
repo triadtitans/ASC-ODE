@@ -309,15 +309,17 @@ class RBS_FEM{
   std::vector<Beam> _beams;
   Vector<double> gravity_ = {0, 0, 0};
   std::vector<double> lag_params; // first order, second order, first order, second order, ...
+  Matrix<double> global_mass_inv_{1, 1};
 
   public:
   std::vector<RigidBody_FEM>& bodies(){return _bodies;}
   std::vector<Spring>& springs(){return _springs;}
   auto& beams(){return _beams;}
   Vector<double> & gravity() {return gravity_;}
-  int numBodies(){return _bodies.size();}
-  int numSprings(){return _springs.size();}
-  int numBeams(){return _beams.size();}
+  int numBodies() const {return _bodies.size();}
+  int numSprings() const {return _springs.size();}
+  int numBeams() const {return _beams.size();}
+  MatrixView<double> getGlobalMassInverse(){return global_mass_inv_;}
 
   void getState(VectorView<double> out){
     for(int i=0; i<numBodies(); i++){
@@ -439,6 +441,15 @@ class RBS_FEM{
     return res;
   }
 
+  void recalcMassMatrixInverse(){
+    Matrix<double> inv(numBodies()*6, numBodies()*6);
+
+    for (size_t b=0; b < numBodies(); b++){
+      inv.Cols(b*6, 6).Rows(b*6, 6) = inverse(bodies()[b].Mass_matrix());
+    }
+    global_mass_inv_ = inv;
+  }
+
   void saveState(){
     for (auto& rb: _bodies){
       rb.saveState();
@@ -452,6 +463,7 @@ class RBS_FEM{
 
   Connector addBody(RigidBody_FEM& b){
     _bodies.push_back(b);
+    recalcMassMatrixInverse();
     // std::cout << _bodies.size()-1 << std::endl;
     return Connector{ConnectorType::mass, Vector<double>(3), _bodies.size()-1};
   }
@@ -672,15 +684,6 @@ class EQRigidBodySystem : public NonlinearFunction
     }
   }
 
-  Matrix<double> massMatrixInverse() const{
-    Matrix<double> inv(_num_bodies*6, _num_bodies*6);
-
-    for (size_t b=0; b < _num_bodies; b++){
-      inv.Cols(b*6, 6).Rows(b*6, 6) = inverse(rbs_.bodies()[b].Mass_matrix());
-    }
-    return inv;
-  }
-
   template<typename T>
   T velocityConstraint(VectorView<T> qmp) const{
     VectorView<T> q = qmp.Range(0, dim_per_transform*_num_bodies);
@@ -690,7 +693,7 @@ class EQRigidBodySystem : public NonlinearFunction
     Matrix<T> Gq(_num_beams, dim_per_transform*_num_bodies);
     G(q, Gq);
 
-    Vector<T> MInvP = /*massMatrixInverse() * */p;
+    Vector<T> MInvP = rbs_.getGlobalMassInverse() * p;
     Vector<T> MInvPFull(dim_per_transform*_num_bodies);
 
     Matrix<T> omega(3, 3);

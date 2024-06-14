@@ -6,8 +6,11 @@ execute_process(
 list(APPEND CMAKE_PREFIX_PATH "${PYBIND11_DIR}")
 find_package(pybind11 CONFIG REQUIRED)
 
+find_package(LAPACK REQUIRED)
+
 pybind11_add_module(rigid_body_FEM bind_rigid_body_FEM.cc)
 target_link_libraries (rigid_body_FEM PUBLIC)
+target_link_libraries (rigid_body_FEM PUBLIC LAPACK::LAPACK)
 # add_custom_command(TARGET rigid_body_FEM POST_BUILD 
 #   COMMAND "${CMAKE_COMMAND}" -E copy 
 #      "$<TARGET_FILE:rigid_body_FEM>"
@@ -19,3 +22,4 @@ target_compile_options(rigid_body_FEM PRIVATE "-flto=auto")
 
 add_executable (test_rb_fem rigid_body_fem.cc)
 target_link_libraries (test_rb_fem PUBLIC)
+target_link_libraries (test_rb_fem PUBLIC LAPACK::LAPACK)

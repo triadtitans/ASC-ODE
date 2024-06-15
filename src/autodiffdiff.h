@@ -12,7 +12,7 @@ namespace ASC_ode
     {
         SCAL val;
         SCAL dval[D?D:1] ={0};
-        SCAL ddval[D?D*D:1]={0};
+        /* SCAL ddval[D?D*D:1]={0}; */
     public:
 
         typedef AutoDiffDiff<D, SCAL> TELEM;
@@ -27,8 +27,8 @@ namespace ASC_ode
             val = ad2.val;
             for (size_t i = 0; i < D; i++)
             dval[i] = ad2.dval[i];
-            for (size_t i = 0; i < D*D; i++)
-            ddval[i] = ad2.ddval[i];
+            /* for (size_t i = 0; i < D*D; i++)
+            ddval[i] = ad2.ddval[i]; */
         }
 
         /// initial object with constant value
@@ -37,8 +37,8 @@ namespace ASC_ode
             val = aval;
             for (size_t i = 0; i < D; i++)
             dval[i] = 0;
-            for (size_t i = 0; i < D*D; i++)
-            ddval[i] = 0;
+            /* for (size_t i = 0; i < D*D; i++)
+            ddval[i] = 0; */
         }
 
         /// initial object with value and derivative
@@ -59,8 +59,8 @@ namespace ASC_ode
             val = aval;
             for (size_t i = 0; i < D; i++)
             dval[i] = 0;
-            for (size_t i = 0; i < D*D; i++)
-            ddval[i] = 0;
+            /* for (size_t i = 0; i < D*D; i++)
+            ddval[i] = 0; */
             dval[diffindex] = 1;
         }
 
@@ -68,16 +68,16 @@ namespace ASC_ode
         {
             val = aval;
             LoadGradient (grad);
-            for (size_t i = 0; i < D*D; i++)
-            ddval[i] = 0;
+            /* for (size_t i = 0; i < D*D; i++)
+            ddval[i] = 0; */
         }
 
-        AutoDiffDiff (SCAL aval, const SCAL * grad, const SCAL * hesse)
+        /* AutoDiffDiff (SCAL aval, const SCAL * grad, const SCAL * hesse)
         {
             val = aval;
             LoadGradient (grad);
             LoadHessian (hesse);
-        }
+        } */
 
         /// assign constant value
         AutoDiffDiff & operator= (SCAL aval) throw()
@@ -85,8 +85,8 @@ namespace ASC_ode
             val = aval;
             for (size_t i = 0; i < D; i++)
                 dval[i] = 0;
-            for (size_t i = 0; i < D*D; i++)
-                ddval[i] = 0;
+            /* for (size_t i = 0; i < D*D; i++)
+                ddval[i] = 0; */
             return *this;
         }
 
@@ -102,24 +102,24 @@ namespace ASC_ode
                 dval[i] = p[i];
         }
 
-        void StoreHessian (SCAL * p) const 
+        /* void StoreHessian (SCAL * p) const 
         {
             for (size_t i = 0; i < D*D; i++)
                 p[i] = ddval[i];
-        }
+        } */
 
-        void LoadHessian (const SCAL * p) 
+        /* void LoadHessian (const SCAL * p) 
         {
             for (size_t i = 0; i < D*D; i++)
                 ddval[i] = p[i];
-        }
+        } */
 
         /// returns value
         SCAL Value() const throw() { return val; }
 
         /// returns partial derivative
         SCAL DValue (size_t i) const throw() { return dval[i]; }
-
+ 
         /*
         AutoDiffVec<D,SCAL> DValueAD (size_t i) const
         {
@@ -131,11 +131,11 @@ namespace ASC_ode
         */
         
         /// returns partial derivative
-        SCAL DDValue (size_t i) const throw() { return ddval[i]; }
-
+        /* SCAL DDValue (size_t i) const throw() { return ddval[i]; }
+ */
         /// returns partial derivative
-        SCAL DDValue (size_t i, size_t j) const throw() { return ddval[i*D+j]; }
-
+        /* SCAL DDValue (size_t i, size_t j) const throw() { return ddval[i*D+j]; }
+ */
         /// access value
         SCAL & Value() throw() { return val; }
 
@@ -143,11 +143,11 @@ namespace ASC_ode
         SCAL & DValue (size_t i) throw() { return dval[i]; }
 
         /// accesses partial derivative 
-        SCAL & DDValue (size_t i) throw() { return ddval[i]; }
-
+        /* SCAL & DDValue (size_t i) throw() { return ddval[i]; }
+ */
         /// accesses partial derivative 
-        SCAL & DDValue (size_t i, size_t j) throw() { return ddval[i*D+j]; }
-
+        /* SCAL & DDValue (size_t i, size_t j) throw() { return ddval[i*D+j]; }
+ */
         /*
         explicit operator AutoDiffVec<D,SCAL> () const
         { return AutoDiffVec<D,SCAL> (val, &dval[0]); }
@@ -159,8 +159,8 @@ namespace ASC_ode
             val += y.val;
             for (size_t i = 0; i < D; i++)
                 dval[i] += y.dval[i];
-            for (size_t i = 0; i < D*D; i++)
-                ddval[i] += y.ddval[i];
+            /* for (size_t i = 0; i < D*D; i++)
+                ddval[i] += y.ddval[i]; */
             return *this;
         }
 
@@ -170,23 +170,23 @@ namespace ASC_ode
             val -= y.val;
             for (size_t i = 0; i < D; i++)
                 dval[i] -= y.dval[i];
-            for (size_t i = 0; i < D*D; i++)
-                ddval[i] -= y.ddval[i];
+            /* for (size_t i = 0; i < D*D; i++)
+                ddval[i] -= y.ddval[i]; */
             return *this;
         }
 
         /// multiply with autodiffdiff object
         AutoDiffDiff<D, SCAL> & operator*= (const AutoDiffDiff<D, SCAL> & y) throw()
         {
-            for (size_t i = 0; i < D*D; i++) {
+            /* for (size_t i = 0; i < D*D; i++) {
                 ddval[i] = val * y.ddval[i] + y.val * ddval[i];
             }
-
-            for (size_t i = 0; i < D; i++){
+ */
+            /* for (size_t i = 0; i < D; i++){
                 for (size_t j = 0; j < D; j++){
                 ddval[i*D+j] += dval[i] * y.dval[j] + dval[j] * y.dval[i];
                 }
-            }
+            } */
 
             for (size_t i = 0; i < D; i++)
             {
@@ -200,9 +200,9 @@ namespace ASC_ode
         /// multiply with scalar
         AutoDiffDiff<D, SCAL> & operator*= (const SCAL & y) throw()
         {
-            for ( size_t i = 0; i < D*D; i++ ) {
+            /* for ( size_t i = 0; i < D*D; i++ ) {
                 ddval[i] *= y;
-            }
+            } */
             for (size_t i = 0; i < D; i++) {
                 dval[i] *= y;
             }
@@ -214,9 +214,9 @@ namespace ASC_ode
         AutoDiffDiff<D, SCAL> & operator/= (const SCAL & y) throw()
         {
             SCAL iy = 1.0 / y;
-            for ( size_t i = 0; i < D*D; i++ ) {
+            /* for ( size_t i = 0; i < D*D; i++ ) {
                 ddval[i] *= iy;
-            }
+            } */
             for (size_t i = 0; i < D; i++) {
                 dval[i] *= iy;
             }
@@ -233,9 +233,9 @@ namespace ASC_ode
         for (size_t i = 0; i < D; i++) {
             res.DValue(i) = y.DValue(i);
         }
-        for (size_t i = 0; i < D*D; i++) {
+        /* for (size_t i = 0; i < D*D; i++) {
             res.DDValue(i) = y.DDValue(i);
-        }
+        } */
         return res;
     }
 
@@ -247,9 +247,9 @@ namespace ASC_ode
         for (size_t i = 0; i < D; i++) {
             res.DValue(i) = x.DValue(i) + y.DValue(i);
         }
-        for (size_t i = 0; i < D*D; i++) {
+        /* for (size_t i = 0; i < D*D; i++) {
             res.DDValue(i) = x.DDValue(i) + y.DDValue(i);
-        }
+        } */
         return res;
     }
 
@@ -262,9 +262,9 @@ namespace ASC_ode
         for (size_t i = 0; i < D; i++) {
             res.DValue(i) = y.DValue(i);
         }
-        for (size_t i = 0; i < D*D; i++) {
+        /* for (size_t i = 0; i < D*D; i++) {
             res.DDValue(i) = y.DDValue(i);
-        }
+        } */
         return res;
     }
 
@@ -276,9 +276,9 @@ namespace ASC_ode
         for (size_t i = 0; i < D; i++) {
             res.DValue(i) = x.DValue(i) - y.DValue(i);
         }
-        for (size_t i = 0; i < D*D; i++) {
+        /* for (size_t i = 0; i < D*D; i++) {
             res.DDValue(i) = x.DDValue(i) - y.DDValue(i);
-        }
+        } */
         return res;
     }
 
@@ -292,9 +292,9 @@ namespace ASC_ode
         for (size_t i = 0; i < D; i++) {
             res.DValue(i) = -x.DValue(i);
         }
-        for (size_t i = 0; i < D*D; i++) {
+        /* for (size_t i = 0; i < D*D; i++) {
             res.DDValue(i) = -x.DDValue(i);
-        }
+        } */
         return res;
     }
 
@@ -307,9 +307,9 @@ namespace ASC_ode
         for (size_t i = 0; i < D; i++) {
             res.DValue(i) = x.DValue(i);
         }
-        for (size_t i = 0; i < D*D; i++) {
+        /* for (size_t i = 0; i < D*D; i++) {
             res.DDValue(i) = x.DDValue(i);
-        }
+        } */
         return res;
     }
 
@@ -322,25 +322,25 @@ namespace ASC_ode
         for (size_t i = 0; i < D; i++) {
             res.DValue(i) = -y.DValue(i);
         }
-        for (size_t i = 0; i < D*D; i++) {
+        /* for (size_t i = 0; i < D*D; i++) {
             res.DDValue(i) = -y.DDValue(i);
-        }
+        } */
         return res;
     }
 
 
     ///
     template<size_t D, typename SCAL, typename SCAL2>
-    inline AutoDiffDiff<D, SCAL> operator* (SCAL2 x, const AutoDiffDiff<D, SCAL> & y) throw()
+    inline AutoDiffDiff<D, SCAL> operator* (const SCAL2 x, const AutoDiffDiff<D, SCAL> & y) throw()
     {
         AutoDiffDiff<D, SCAL> res;
         res.Value() = x*y.Value();
         for (size_t i = 0; i < D; i++) {
             res.DValue(i) = x*y.DValue(i);
         }
-        for (size_t i = 0; i < D*D; i++) {
+        /* for (size_t i = 0; i < D*D; i++) {
             res.DDValue(i) = x*y.DDValue(i);
-        }
+        } */
         return res;
     }
 
@@ -353,9 +353,9 @@ namespace ASC_ode
         for (size_t i = 0; i < D; i++) {
             res.DValue(i) = x*y.DValue(i);
         }
-        for (size_t i = 0; i < D*D; i++) {
+        /* for (size_t i = 0; i < D*D; i++) {
             res.DDValue(i) = x*y.DDValue(i);
-        }
+        } */
         return res;
     }
 
@@ -372,12 +372,12 @@ namespace ASC_ode
             res.DValue(i) = hx*y.DValue(i) + hy*x.DValue(i);
         }
 
-        for (size_t i = 0; i < D; i++) {
+        /* for (size_t i = 0; i < D; i++) {
             for (size_t j = 0; j < D; j++) {
             res.DDValue(i,j) = hx * y.DDValue(i,j) + hy * x.DDValue(i,j)
             + x.DValue(i) * y.DValue(j) + x.DValue(j) * y.DValue(i);
             }
-        }
+        } */
 
         return res;
     }
@@ -392,13 +392,13 @@ namespace ASC_ode
             res.DValue(i) = -x.DValue(i) / (x.Value() * x.Value());
         }
 
-        SCAL fac1 = 2/(x.Value()*x.Value()*x.Value());
-        SCAL fac2 = 1/sqr(x.Value());
-        for (size_t i = 0; i < D; i++) {
+        /* SCAL fac1 = 2/(x.Value()*x.Value()*x.Value());
+        SCAL fac2 = 1/sqr(x.Value()); */
+        /* for (size_t i = 0; i < D; i++) {
             for (size_t j = 0; j < D; j++) {
             res.DDValue(i,j) = fac1*x.DValue(i)*x.DValue(j) - fac2*x.DDValue(i,j);
             }
-        }
+        } */
         return res;
     }
 
@@ -436,7 +436,7 @@ namespace ASC_ode
         }
 
         
-        for (size_t i = 0; i < D; i++) {
+        /* for (size_t i = 0; i < D; i++) {
             for (size_t j = 0; j < D; j++) {
                 if((x.DDValue(i,j)+x.DValue(i)*x.DValue(j)) == 0) {
                     res.DDValue(i, j) = SCAL{0.};
@@ -444,7 +444,7 @@ namespace ASC_ode
                     0.5/res.Value() * x.DDValue(i,j) - 0.25 / (x.Value()*res.Value()) * x.DValue(i) * x.DValue(j);
                 }
             }
-        }
+        } */
 
         return res;
     }
@@ -459,11 +459,11 @@ namespace ASC_ode
         for (size_t k = 0; k < D; k++) {
             res.DValue(k) = x.DValue(k) * res.Value();
         }
-        for (size_t k = 0; k < D; k++) {
+        /* for (size_t k = 0; k < D; k++) {
             for (size_t l = 0; l < D; l++) {
             res.DDValue(k,l) = (x.DValue(k) * x.DValue(l)+x.DDValue(k,l)) * res.Value();
             }
-        }
+        } */
         return res;
     }
 
@@ -476,11 +476,11 @@ namespace ASC_ode
         for (size_t k = 0; k < D; k++) {
             res.DValue(k) = x.DValue(k) * xinv;
         }
-        for (size_t k = 0; k < D; k++) {
+        /* for (size_t k = 0; k < D; k++) {
             for (size_t l = 0; l < D; l++) {
             res.DDValue(k,l) = -xinv*xinv*x.DValue(k) * x.DValue(l) + xinv * x.DDValue(k,l);
             }
-        }
+        } */
         return res;
     }
 
@@ -511,11 +511,11 @@ namespace ASC_ode
         for (size_t k = 0; k < D; k++) {
             res.DValue(k) = x.DValue(k) * c;
         }
-        for (size_t k = 0; k < D; k++) {
+        /* for (size_t k = 0; k < D; k++) {
             for (size_t l = 0; l < D; l++) {
             res.DDValue(k,l) = -s * x.DValue(k) * x.DValue(l) + c * x.DDValue(k,l);
             }
-        }
+        } */
         return res;
     }
 
@@ -531,11 +531,11 @@ namespace ASC_ode
         for (size_t k = 0; k < D; k++) {
             res.DValue(k) = -s * x.DValue(k);
         }
-        for (size_t k = 0; k < D; k++) {
+        /* for (size_t k = 0; k < D; k++) {
             for (size_t l = 0; l < D; l++) {
             res.DDValue(k,l) = -c * x.DValue(k) * x.DValue(l) - s * x.DDValue(k,l);
             }
-        }
+        } */
         return res;
     }
 

@@ -6,6 +6,7 @@ set (CMAKE_CXX_STANDARD 17)
 include_directories(src)
 include_directories(BLA/src)
 include_directories(BLA/HPC/src)
+include_directories(BLA/HPC/concurrentqueue)
 
 # if invoked using scikit-build-core
 if(DEFINED SKBUILD)

@@ -31,14 +31,26 @@ PYBIND11_MODULE(rigid_body_FEM, rbd) {
         return sstr.str();
       })
       .def("setTranslation",&Transformation<>::setTranslation)
+      .def("applyTranslationProdSpace",&Transformation<>::applyTranslationProdSpace)
+      .def("applyTranslationSE3",&Transformation<>::applyTranslationSE3)
+
       .def("setRotation",&Transformation<>::setRotation)
       .def("setRotationDeg",&Transformation<>::setRotationDeg)
       .def("applyRotationDeg",&Transformation<>::applyRotationDeg)
+
+      .def("__mul__", [](Transformation<> & self, Transformation<> & other)
+      { return self*other; })
+      .def("__add__", [](Transformation<> & self, Transformation<> & other)
+      { return self+other; })
+
+      .def_property_readonly("angle_deg",&Transformation<>::getAngle)
+
       .def("asTuple",[](Transformation<>& t){
         // *column-major* transformation matrix as in https://threejs.org/docs/#api/en/math/Matrix4
         // converts Schöberl-style ordering of Q to column-major ordering of a three.js transformation matrix:
         return py::make_tuple(t.q_(1), t.q_(5), t.q_(9), 0, t.q_(2), t.q_(6), t.q_(10), 0, t.q_(3), t.q_(7), t.q_(11), 0, t.q_(0), t.q_(4), t.q_(8), 1);
       });
+
 
     py::class_<Connector>(rbd,"Connector", py::module_local())
       .def_property("pos",[](Connector& c){return py::make_tuple(c.pos(0),c.pos(1),c.pos(2));},

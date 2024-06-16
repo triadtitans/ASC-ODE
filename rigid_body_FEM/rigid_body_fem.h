@@ -5,6 +5,7 @@
 #include <ode.h>
 #include "../src/autodiffdiff.h"
 #include <cmath>
+#include <chrono>
 
 
 #ifdef PYBIND11_MODULE
@@ -70,6 +71,13 @@ class Transformation{
   }
 
   void setTranslation(T a, T b, T c){q_(0)=a;q_(4)=b;q_(8)=c;}
+  void applyTranslationProdSpace(T a, T b, T c){q_(0)+=a;q_(4)+=b;q_(8)+=c;}
+  void applyTranslationSE3(T a, T b, T c){
+    Vector<T> trans{a, b, c};
+    Vector<T> transformed = getRotation()*trans + getTranslation();
+    setTranslation(transformed(0), transformed(1), transformed(2));
+  }
+
   void setRotation(int i, int j, T r){
     if(i>2||j>2 || j<0 || i <0) throw std::invalid_argument("Rotation Matrix is 3x3");
     q_((4*i + 1) + j)=r; // note the ordering of q
@@ -110,15 +118,42 @@ class Transformation{
     }
     return B;
   }
+  double getAngle(){
+    Matrix<double> rot = getRotation();
+    double tr = rot(0, 0) + rot(1, 1) + rot(2, 2);
+    return radToDeg(std::acos((tr - 1)/2));
+  }
 };
 
-  std::ostream& operator<<(std::ostream& oss, const Transformation<double>& t){
-      oss<<std::fixed << " Translation: \t" << t.q_(0) << " ," << t.q_(4) << ", "<<", " << t.q_(8) << std::endl
-                      << " Rotation: \t" << t.q_(1) << " ," << t.q_(2) << ", "<<", " << t.q_(3) <<  std::endl
-                     << " \t\t" << t.q_(5) << " ," << t.q_(6) << ", "<<", " << t.q_(7) <<  std::endl
-                      << "\t\t" << t.q_(9) << " ," << t.q_(10) << ", "<<", " << t.q_(11) << std::endl; 
-    return oss;
-  }
+std::ostream& operator<<(std::ostream& oss, const Transformation<double>& t){
+    oss<<std::fixed << " Translation: \t" << t.q_(0) << " ," << t.q_(4) << ", "<<", " << t.q_(8) << std::endl
+                    << " Rotation: \t" << t.q_(1) << " ," << t.q_(2) << ", "<<", " << t.q_(3) <<  std::endl
+                    << " \t\t" << t.q_(5) << " ," << t.q_(6) << ", "<<", " << t.q_(7) <<  std::endl
+                    << "\t\t" << t.q_(9) << " ," << t.q_(10) << ", "<<", " << t.q_(11) << std::endl; 
+  return oss;
+}
+
+// SE(3)
+template<typename T>
+Transformation<T> operator*(Transformation<T> t1, Transformation<T> t2){
+  Transformation<T> res;
+  Vector<T> trans = t1.getTranslation() + t1.getRotation()*t2.getTranslation();
+  res.setTranslation(trans(0), trans(1), trans(2));
+  res.setRotation_from_matrix(t1.getRotation() * t2.getRotation());
+
+  return res;
+}
+
+// ℝ x SO(3)
+template<typename T>
+Transformation<T> operator+(Transformation<T> t1, Transformation<T> t2){
+  Transformation<T> res;
+  Vector<T> trans = t1.getTranslation() + t1.getRotation()*t2.getTranslation();
+  res.setTranslation(trans(0), trans(1), trans(2));
+  res.setRotation_from_matrix(t1.getRotation() * t2.getRotation());
+
+  return res;
+}
 
 
 
@@ -671,7 +706,6 @@ class EQRigidBodySystem : public NonlinearFunction
 
   template<typename T, typename S>
   void G(VectorView<T> transform, MatrixView<S>& deriv) const {
-  
     Vector<AutoDiffDiff<1, T>> transform_diff = transform;
     
     for (size_t i=0; i < transform.Size(); i++){
@@ -814,6 +848,7 @@ class EQRigidBodySystem : public NonlinearFunction
     // std::cout << "new: " << transformaytions_new << std::endl << "half: " << transformations_half << std::endl;
     // std::cout << _num_bodies << std::endl;
 
+    // auto start = std::chrono::high_resolution_clock::now();
     // secondary constraint: values for bodies
     Vector<double> qmp_old = rbs_.xToQmp(rbs_.stateToX(state_old));
     Vector<double> qmp_new = rbs_.xToQmp(x);
@@ -824,6 +859,11 @@ class EQRigidBodySystem : public NonlinearFunction
     dVelocityConstraint(qmp_old, dv_const_old);
     dVelocityConstraint(qmp_new, dv_const_new);
 
+    /* auto end = std::chrono::high_resolution_clock::now();
+    double time = std::chrono::duration<double>(end-start).count();
+
+    std::cout << "total time for derivation: " << time << ", per step: " << time/(dim_per_transform*_num_bodies*_num_beams*qmp_old.Size()) << std::endl;
+ */
     for (size_t i = 0; i < _num_bodies; i++){
       _functions[i]->force_old() = forces_half.Range(i * dim_per_transform, (i+1) * dim_per_transform);
       _functions[i]->force_new() = forces_new.Range(i * dim_per_transform, (i+1) * dim_per_transform);
@@ -841,7 +881,7 @@ class EQRigidBodySystem : public NonlinearFunction
   }
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
   {
-    dNumeric(*this,x,df);
+    dNumericMultithread(*this,x,df);
     // // upper left block
     // _func->EvaluateDeriv(x,df.Rows(0,_func->DimF()).Cols(0,_func->DimF()));
 
@@ -909,7 +949,7 @@ class EQRigidBodySystem : public NonlinearFunction
   }
 } */
 
-void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,double,VectorView<double>)> callback = nullptr ){  
+void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,double,VectorView<double>)> callback = nullptr ){
 
   Vector<double> state(dim_per_body*rbs.numBodies() + 2*rbs.numBeams());
   Vector<double> x(eq_per_body*rbs.numBodies() + 2*rbs.numBeams());
@@ -931,7 +971,7 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
     //std::cout << test<< std::endl;
     //std::cout << df << std::endl;
     // std::cout << "before newton" << std::endl;
-    NewtonSolver(eq, x, 1e-10, 10, callback);
+    NewtonSolver(eq, x, 1e-10, 10, callback);//, [](int a,  double b, auto c){std::cout << "new_run" << std::endl;});
     //std::cout <<"l"<< x<<std::endl;
     state = rbs.xToState(x);
 

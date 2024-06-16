@@ -3,6 +3,11 @@
 
 #include "vector.h"
 #include "matrix.h"
+#include "taskmanager.cc"
+#include "timer.cc"
+
+#include <mutex>
+#include <thread>
 
 
 namespace ASC_ode
@@ -139,6 +144,29 @@ namespace ASC_ode
     }
   }; */
 
+  void dNumericMultithread(const NonlinearFunction& f, VectorView<double> x, MatrixView<double> df){
+    double eps = 1e-3;
+
+    // as many workers as threads supported by your machine, minus one
+    int workernum = std::thread::hardware_concurrency();
+    StartWorkers(workernum - 1);
+    
+    //std::mutex mut;
+    RunParallel(f.DimX(), [&](int i, int size){
+      //std::lock_guard<std::mutex> lock(mut); 
+      // std::cout << i <<", " << size << ", " << workernum << std::endl;
+      Vector<> xl(f.DimX()), xr(f.DimX()), fl(f.DimF()), fr(f.DimF());
+      xl = x;
+      xl(i) -= eps;
+      xr = x;
+      xr(i) += eps;
+      f.Evaluate (xl, fl);
+      f.Evaluate (xr, fr);
+      df.Col(i) = 1/(2*eps) * (fr-fl);
+    });
+    StopWorkers();
+  }
+
   void dNumeric(const NonlinearFunction& f, VectorView<double> x, MatrixView<double> df){
     double eps = 1e-3;
     Vector<> xl(f.DimX()), xr(f.DimX()), fl(f.DimF()), fr(f.DimF());
@@ -154,6 +182,7 @@ namespace ASC_ode
 
       }
   }
+
 //Numeric derivative of a scalar function
 class NumericDerivative : public NonlinearFunction
 {

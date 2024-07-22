@@ -16,7 +16,6 @@ description="rigid body mechanics implementation"
 authors = [
   { name = "J. Schöberl, T. Leichtfried, L. Gauler, N. Hammer" },
 ]
-requires-python = "==3.12.1"
 
 [tool.scikit-build]
 wheel.expand-macos-universal-tags = true

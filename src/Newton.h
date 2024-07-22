@@ -14,11 +14,12 @@ namespace ASC_ode
     Vector<> res(func->DimF());
     Matrix<> fprime(func->DimF(), func->DimX());
 
-    //std::cout << "x = " << x << std::endl; 
+    //std::cout << "x = " << x << std::endl;
     for (int i = 0; i < maxsteps; i++)
       {
         //std::cout << "res ="<< res << std::endl;
         func->Evaluate(x, res);
+        std::cout << "res ="<< res << std::endl;
         //std::cout << "|res| = " << Norm(res) << std::endl;
         func->EvaluateDeriv(x, fprime);
         //std::cout << "fprime = " << fprime << std::endl;

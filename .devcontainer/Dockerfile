@@ -1,7 +1,7 @@
-FROM mcr.microsoft.com/devcontainers/universal:2
+FROM archlinux
 
-RUN apt update && apt upgrade
-RUN apt install fish && chsh fish
+RUN pacman -Syu --noconfirm
+RUN pacman -S git gcc cmake make openblas fish python nodejs python-pip --noconfirm
 
 
 ENV PYODIDE_VERSION=0.26.1
@@ -13,6 +13,6 @@ WORKDIR /root
 RUN git clone https://github.com/emscripten-core/emsdk.git
 RUN cd emsdk && ./emsdk install ${EMSDK_VERSION} && ./emsdk activate ${EMSDK_VERSION}
 
-RUN pip install pyodide-build==${PYODIDE_VERSION} --break-system-packages
+RUN pip install pyodide_build==0.26.0 --break-system-packages
 
-RUN pyodide venv env26
+# RUN pyodide venv env26

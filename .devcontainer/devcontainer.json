@@ -7,6 +7,18 @@
 		"context": "..",
 		// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
 		"dockerfile": "./Dockerfile"
+	},
+
+	"postCreateCommand": "python3 -m pip install -r requirements.txt --break-system-packages",
+
+	"customizations": {
+		"codespaces": {
+			"repositories": {
+				"triadtitans/*": {
+					"permissions": "write-all"
+				}
+			}
+		}
 	}
 
 	// Features to add to the dev container. More info: https://containers.dev/features.

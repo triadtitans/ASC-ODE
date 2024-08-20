@@ -612,6 +612,10 @@ class EQRigidBody : public NonlinearFunction
     Matrix<double> Bhalf(3, 3);
     Bhalf = 0.5*(Bnew + Bold);
 
+    //std::cout << "x:" << x << std::endl;
+    //std::cout << "Body: " << body_index_ << " Force old: " << force_old_ << std::endl;
+    //std::cout << "Body: " << body_index_ << " Force new: " << force_new_ << std::endl;
+
     // std::cout << vskew << "\n" << std::endl;
 
     // I
@@ -679,6 +683,8 @@ class EQRigidBodySystem : public NonlinearFunction
     for(int i=0;i<num_bodies;i++){
       auto q = state.Range(i*dim_per_body,i*dim_per_body+12);
       auto p = state.Range(i*dim_per_body+12,i*dim_per_body+18); 
+      std::cout << "q: " << q << std::endl;
+      std::cout << "p: " << p << std::endl;
       std::shared_ptr<EQRigidBody> eq = std::make_shared<EQRigidBody>(Transformation<double>(q), p, h, rbs_, i); //(Transformation<double>(q), p, h, rbs_, i);
       _func->addFunction(eq);
       _functions.push_back(eq);
@@ -699,7 +705,7 @@ class EQRigidBodySystem : public NonlinearFunction
 
         Vec<3, T> pos1 = c1.absPos(rbs_.get_translation(transforms, l), rbs_.get_rotation(transforms, l));
         Vec<3, T> pos2 = c2.absPos(rbs_.get_translation(transforms, k), rbs_.get_rotation(transforms, k));
-        res(i) = (pos1-pos2)*(pos1-pos2)-beam.length*beam.length; // shall be zero
+        res(i) = ((pos1-pos2)*(pos1-pos2) - beam.length*beam.length)*((pos1-pos2)*(pos1-pos2) - beam.length*beam.length); //(pos1-pos2)*(pos1-pos2)-beam.length*beam.length; // shall be zero
       }
     return res;
   }
@@ -844,7 +850,8 @@ class EQRigidBodySystem : public NonlinearFunction
     Vector<double> forces_new(transformations_new.Size());
     force<>(transformations_new, forces_new);
     //std::cout << "lambda: " << transformations_old(transformations_new.Size()) << " "<<  transformations_new(transformations_new.Size()) << std::endl;
-     //std::cout << "new: " << forces_new << std::endl << "half: " << forces_half << std::endl;
+    //std::cout << "new: " << forces_new <<
+    //std::cout << "half: " << forces_half << std::endl;
     // std::cout << "new: " << transformaytions_new << std::endl << "half: " << transformations_half << std::endl;
     // std::cout << _num_bodies << std::endl;
 
@@ -864,11 +871,13 @@ class EQRigidBodySystem : public NonlinearFunction
 
     std::cout << "total time for derivation: " << time << ", per step: " << time/(dim_per_transform*_num_bodies*_num_beams*qmp_old.Size()) << std::endl;
  */
+    //std::cout << "x: " << x << std::endl;
     for (size_t i = 0; i < _num_bodies; i++){
       _functions[i]->force_old() = forces_half.Range(i * dim_per_transform, (i+1) * dim_per_transform);
       _functions[i]->force_new() = forces_new.Range(i * dim_per_transform, (i+1) * dim_per_transform);
       // std::cout << "new: " << _functions[i]->force_new() << std::endl << "half: " << _functions[i]->force_half() << std::endl;
-
+      //std::cout << "Body: " << i << " Force old: " << _functions[i]->force_old() << std::endl;
+      //std::cout << "Body: " << i << " Force new: " << _functions[i]->force_new() << std::endl;
       _functions[i]->dq_gv_old() = dv_const_old.Range(i*dim_per_transform, (i + 1)*dim_per_transform);
       _functions[i]->dq_gv_new() = dv_const_new.Range(i*dim_per_transform, (i + 1)*dim_per_transform);
       _functions[i]->dp_gv_old() = dv_const_old.Range(_num_bodies*dim_per_transform + _num_beams + i*6, _num_bodies*dim_per_transform + _num_beams + (i +1)*6);
@@ -881,7 +890,7 @@ class EQRigidBodySystem : public NonlinearFunction
   }
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
   {
-    dNumericMultithread(*this,x,df);
+    dNumeric(*this,x,df);
     // // upper left block
     // _func->EvaluateDeriv(x,df.Rows(0,_func->DimF()).Cols(0,_func->DimF()));
 
@@ -956,9 +965,9 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
 
   // copy over current values 
   rbs.getState(state);
-  // std::cout << state << std::endl;
+  std::cout << state << std::endl;
   x = rbs.stateToX(state);
-  // std::cout << x<< std::endl;
+  std::cout << x<< std::endl;
   for (size_t step=0; step < steps; step++){
     std::shared_ptr<EQRigidBodySystem> eq = std::make_shared<EQRigidBodySystem>(rbs, state, rbs.numBodies(), rbs.numBeams(), tend/steps);
     // solve equation
@@ -974,8 +983,7 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
     NewtonSolver(eq, x, 1e-10, 10, callback);//, [](int a,  double b, auto c){std::cout << "new_run" << std::endl;});
     //std::cout <<"l"<< x<<std::endl;
     state = rbs.xToState(x);
-
-  
+      
     // std::cout << state << std::endl;
 
     //store data into different bodies

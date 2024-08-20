@@ -41,6 +41,16 @@ namespace ASC_ode
             ddval[i] = 0; */
         }
 
+        template<typename T>
+        AutoDiffDiff  (T aval) throw()
+        {
+            val = aval;
+            for (size_t i = 0; i < D; i++)
+            dval[i] = 0;
+            /* for (size_t i = 0; i < D*D; i++)
+            ddval[i] = 0; */
+        }
+
         /// initial object with value and derivative
         /*
         AutoDiffDiff  (const AutoDiffVec<D, SCAL> & ad2) throw()
@@ -89,6 +99,16 @@ namespace ASC_ode
                 ddval[i] = 0; */
             return *this;
         }
+        template<typename T>
+        AutoDiffDiff & operator= (T aval) throw()
+        {
+            val = aval;
+            for (size_t i = 0; i < D; i++)
+                dval[i] = 0;
+            /* for (size_t i = 0; i < D*D; i++)
+                ddval[i] = 0; */
+            return *this;
+        }
 
         void StoreGradient (SCAL * p) const 
         {
@@ -119,6 +139,8 @@ namespace ASC_ode
 
         /// returns partial derivative
         SCAL DValue (size_t i) const throw() { return dval[i]; }
+
+        SCAL* DValue () throw() { return dval;}
  
         /*
         AutoDiffVec<D,SCAL> DValueAD (size_t i) const
@@ -152,6 +174,9 @@ namespace ASC_ode
         explicit operator AutoDiffVec<D,SCAL> () const
         { return AutoDiffVec<D,SCAL> (val, &dval[0]); }
         */
+
+       /// prints AutoDiff
+        
 
         /// add autodiffdiff object
         AutoDiffDiff<D, SCAL> & operator+= (const AutoDiffDiff<D, SCAL> & y) throw()
@@ -224,6 +249,15 @@ namespace ASC_ode
             return *this;
         }
     };
+
+    template<size_t D, typename SCAL>
+    inline ostream & operator<< (ostream & ost, const AutoDiffDiff<D,SCAL> & x)
+    {
+        ost << x.Value() << ", D = ";
+        for (int i = 0; i < D; i++)
+            ost << x.DValue(i) << " ";
+        return ost;
+    }
 
     template<size_t D, typename SCAL, typename SCAL2>
     inline AutoDiffDiff<D, SCAL> operator+ (SCAL2 x, const AutoDiffDiff<D, SCAL> & y) throw()
@@ -421,30 +455,15 @@ namespace ASC_ode
         return x * Inv(y);
     }
 
-
+    using std::sqrt;
     template<size_t D, typename SCAL>
-    inline AutoDiffDiff<D, SCAL> sqrt (const AutoDiffDiff<D, SCAL> & x)
+    inline AutoDiffDiff<D, SCAL> sqrt (AutoDiffDiff<D, SCAL> & x) throw()
     {
         AutoDiffDiff<D, SCAL> res;
-        res.Value() = std::sqrt(x.Value());
-        for (size_t j = 0; j < D; j++) {
-            if (x.DValue(j) == 0) {
-                res.DValue(j) = SCAL{0.0};
-            } else {
-                res.DValue(j) = 0.5 / res.Value() * x.DValue(j);
-            }
+        res.Value() = sqrt(x.Value());
+        for (size_t j = 0; j < D; j++)  {
+            res.DValue(j) = 0.5 / res.Value() * x.DValue(j);
         }
-
-        
-        /* for (size_t i = 0; i < D; i++) {
-            for (size_t j = 0; j < D; j++) {
-                if((x.DDValue(i,j)+x.DValue(i)*x.DValue(j)) == 0) {
-                    res.DDValue(i, j) = SCAL{0.};
-                } else {
-                    0.5/res.Value() * x.DDValue(i,j) - 0.25 / (x.Value()*res.Value()) * x.DValue(i) * x.DValue(j);
-                }
-            }
-        } */
 
         return res;
     }
@@ -455,7 +474,7 @@ namespace ASC_ode
     inline AutoDiffDiff<D, SCAL> exp (AutoDiffDiff<D, SCAL> x)
     {
         AutoDiffDiff<D, SCAL> res;
-        res.Value() = std::exp(x.Value());
+        res.Value() = exp(x.Value());
         for (size_t k = 0; k < D; k++) {
             res.DValue(k) = x.DValue(k) * res.Value();
         }
@@ -471,7 +490,7 @@ namespace ASC_ode
     inline AutoDiffDiff<D, SCAL> log (AutoDiffDiff<D, SCAL> x)
     {
         AutoDiffDiff<D, SCAL> res;
-        res.Value() = std::log(x.Value());
+        res.Value() = log(x.Value());
         SCAL xinv = 1.0/x.Value();
         for (size_t k = 0; k < D; k++) {
             res.DValue(k) = x.DValue(k) * xinv;

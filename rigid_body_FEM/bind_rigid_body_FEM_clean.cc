@@ -108,6 +108,20 @@ PYBIND11_MODULE(rigid_body_FEM_clean, rbdc) {
         [](RigidBody_FEM& r, Matrix<double> m){
           r.inertia()=m;
       })
+      .def_property("vertices",
+        [](RigidBody_FEM& r){
+          return r.vertices();
+        },
+        [](RigidBody_FEM& r, py::list v){
+          r.vertices()=v;
+      })
+      .def_property("normals",
+        [](RigidBody_FEM& r){
+          return r.normals();
+        },
+        [](RigidBody_FEM& r, py::list n){
+          r.normals()=n;
+      })
       //.def("setMass", &RigidBody::setMass)
       .def("recalcMassMatrix", &RigidBody_FEM::recalcMassMatrix)
       .def("saveState", &RigidBody_FEM::saveState)

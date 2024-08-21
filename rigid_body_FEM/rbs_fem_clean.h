@@ -61,6 +61,12 @@ class RigidBody_FEM {
   //  list of beams connected to body
   std::vector<size_t> beams_;
 
+  // data fetched from netgen:
+  #ifdef PYBIND11_MODULE
+  py::list vertices_;
+  py::list normals_;
+  #endif
+
 public:
 
   template<typename T>
@@ -223,6 +229,11 @@ public:
   Vector<double> getPhat()  {
     return phat_;
   }
+
+  #ifdef PYBIND11_MODULE
+  py::list& vertices(){return vertices_;}
+  py::list& normals(){return normals_;}
+  #endif
 }; 
 
 class RBS_FEM{

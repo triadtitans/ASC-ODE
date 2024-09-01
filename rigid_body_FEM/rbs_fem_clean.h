@@ -73,7 +73,7 @@ public:
   RigidBody_FEM(Vector<double> q,Vector<double> phat,double mass, Vec<3> center_of_mass, MatrixExpr<T>& inertia)
         : q_(q), phat_(phat), force_(Vector<double>(dim_per_transform)), vel_con_(Vector<double>(dim_per_state)),
          initialq_(q), initialphat_(phat), center_of_mass_(center_of_mass), mass_(mass), inertia_(inertia), P_(6, 12), 
-         mass_matrix_(Diagonal<double>(6, 1.0)), mass_matrix_large_(Diagonal<double>(3, 1.0)) {
+         mass_matrix_(Diagonal<double>(6, 1.0)), mass_matrix_large_(Diagonal<double>(12, 0)) {
     if(inertia.Width() != 3) throw std::invalid_argument("Inertia matrix must be 3x3");
     if(inertia.Height() != 3) throw std::invalid_argument("Inertia matrix must be 3x3");
     //if(q.Size() != dim_per_body) throw std::invalid_argument("q Vector must match mass matrix");
@@ -83,7 +83,7 @@ public:
   RigidBody_FEM()
         :   mass_matrix_(Diagonal<double>(6, 1.0)),
           q_(12), initialq_(12), phat_(6), initialphat_(6), inertia_(3,3),center_of_mass_{0,0,0}, P_(6, 12), 
-          force_(Vector<double>(dim_per_transform)), vel_con_(Vector<double>(dim_per_state)), mass_matrix_large_(Diagonal<double>(3, 1.0)) {
+          force_(Vector<double>(dim_per_transform)), vel_con_(Vector<double>(dim_per_state)), mass_matrix_large_(Diagonal<double>(12, 0)) {
     q_(1)=1;q_(6)=1;q_(11)=1;
     // set inertia?
   };
@@ -153,11 +153,9 @@ public:
   }
 
   void recalcMassMatrix_large_inverse(){
-    //mass_matrix_large_(0,0) = mass_;
-    //mass_matrix_large_(1,1) = mass_;
-    //mass_matrix_large_(2,2) = mass_;
-
-    Matrix<double> diagblock(3,3);
+    // std::cout << inertia_ << std::endl << std::endl;
+    Matrix<double> diagblock(4,4);
+    diagblock(0,0) = mass_;
     for (size_t i=1; i < 4; i++)  {
     diagblock(i, 0) = mass_*center()(i-1);
     diagblock(0, i) = mass_*center()(i-1);
@@ -174,16 +172,32 @@ public:
     }
 
     // the diagonal of the lower right corner:
-    diagblock(0+1, 0+1) = (inertia_(1, 1) + inertia_(2, 2) - inertia_(0, 0))/2.;
-    diagblock(1+1, 1+1) = (inertia_(0, 0) + inertia_(2, 2) - inertia_(1, 1))/2.;
-    diagblock(2+1, 2+1) = (inertia_(0, 0) + inertia_(1, 1) - inertia_(2, 2))/2.;
+    diagblock(1, 1) = (inertia_(1, 1) + inertia_(2, 2) - inertia_(0, 0))/2.;
+    diagblock(2, 2) = (inertia_(0, 0) + inertia_(2, 2) - inertia_(1, 1))/2.;
+    diagblock(3, 3) = (inertia_(0, 0) + inertia_(1, 1) - inertia_(2, 2))/2.;
 
     //mass_matrix_large_.Rows(3,6).Cols(3,6) = diagblock;
     //mass_matrix_large_.Rows(6,9).Cols(6,9) = diagblock;
     //mass_matrix_large_.Rows(9,12).Cols(9,12) = diagblock;
-    std::cout << diagblock << std::endl;
+    //std::cout << diagblock << std::endl;
 
-    mass_matrix_large_ = inverse(diagblock);
+    mass_matrix_large_.Col(0).Range(0, 4) = diagblock.Col(0);
+    mass_matrix_large_.Col(1).Range(4, 8) = diagblock.Col(0);
+    mass_matrix_large_.Col(2).Range(8, 12) = diagblock.Col(0);
+
+    mass_matrix_large_.Row(0).Range(0, 4) = diagblock.Row(0);
+    mass_matrix_large_.Row(1).Range(4, 8) = diagblock.Row(0);
+    mass_matrix_large_.Row(2).Range(8, 12) = diagblock.Row(0);
+    //std::cout << diagblock.Cols(1, 3).Rows(1, 3);
+    mass_matrix_large_.Cols(3, 3).Rows(3, 3) = diagblock.Cols(1, 3).Rows(1, 3);
+    mass_matrix_large_.Cols(6, 3).Rows(6, 3) = diagblock.Cols(1, 3).Rows(1, 3);
+    mass_matrix_large_.Cols(9, 3).Rows(9, 3) = diagblock.Cols(1, 3).Rows(1, 3);
+
+    mass_matrix_large_ = inverse(mass_matrix_large_);
+
+
+
+    //std::cout << "h" << std::endl;
   }
 
   //  calculates a specific format of the mass matrix fitting to the variable notation of our simulation
@@ -400,7 +414,7 @@ class RBS_FEM{
     bodies_.push_back(b);
 
     recalcMassMatrixInverse();
-    // b.recalcMassMatrix_large_inverse();
+    b.recalcMassMatrix_large_inverse();
     
 
     // std::cout << bodies_.size()-1 << std::endl;
@@ -559,9 +573,14 @@ class RBS_FEM{
       x_diff(dim_per_transform + i).DValue(dim_per_transform + i) = 1;
     }
 
+    std::cout << x_diff << std::endl;
+
     // calclation of potential and force
     Vec<3, AutoDiffDiff<2*dim_per_transform, T>> pos1 = bm.Connector_a().absPos(x_diff.Range(0, dim_per_transform));
     Vec<3, AutoDiffDiff<2*dim_per_transform, T>> pos2 = bm.Connector_b().absPos(x_diff.Range(dim_per_transform, 2*dim_per_transform));
+
+    std::cout << pos1 << std::endl;
+    std::cout << pos2 << std::endl;
 
     AutoDiffDiff<2*dim_per_transform, T> norm = Norm(pos1-pos2) - bm.Length();
     res(0) = (norm * norm);
@@ -583,6 +602,11 @@ class RBS_FEM{
 
     Vector<T> temp(2*dim_per_transform);
 
+    temp.Range(0, 12) = bodies_[body_index_a].Mass_matrix_large_invers()*x.Range(0, dim_per_transform);
+
+    temp.Range(12, 24) = bodies_[body_index_b].Mass_matrix_large_invers() * x.Range(dim_per_transform, 2 * dim_per_transform);
+
+    /* 
     temp.Range(0, 3) = 1./bodies_[body_index_a].mass() * x.Range(body_index_a * dim_per_body + 18, body_index_a * dim_per_body + 21);
 
     Matrix<T> B_a = bodies_[body_index_a].Mass_matrix_large_invers()*AsMatrix(x.Range(body_index_a * dim_per_body + 3, 
@@ -597,7 +621,8 @@ class RBS_FEM{
       
     temp.Range(12, 15) = 1./bodies_[body_index_b].mass() * x.Range(body_index_b*dim_per_body + 18, body_index_b*dim_per_body + 21);
 
-    temp.Range(15, 24) = AsVector(B_b);
+    temp.Range(15, 24) = AsVector(B_b); 
+    */
 
     return G_i*temp;
   }
@@ -607,34 +632,66 @@ class RBS_FEM{
   void dvelocity_constraint(VectorView<T>& x, VectorView<S>& f, size_t body_index)  {
 
     AutoDiffDiff<dim_per_state, T> res;
-    Vector<AutoDiffDiff<dim_per_state, T>> x_diff(dim_per_state);
+    Vector<AutoDiffDiff<dim_per_state, T>> x_diff(2 * dim_per_transform);
 
     for (size_t i = 0; i <dim_per_transform; i++) {
       x_diff(i) = x(body_index*dim_per_body + i);
       x_diff(i).DValue(i) = 1;
     }
 
-    for (size_t i = 0; i < 6; i++)  {
-      x_diff(dim_per_transform + i) = x(body_index*dim_per_body + dim_per_transform + i);
-      x_diff(dim_per_transform + i) = 1;
+    Vector<AutoDiffDiff<dim_per_state, T>> p_a(3);
+    for (size_t i = 0; i < 3; i++)  {
+      p_a(i) = x(body_index*dim_per_body + 21 + i);
+      p_a(i).DValue(dim_per_transform + 3 + i) = 1;
     }
 
+    Matrix<AutoDiffDiff<dim_per_state, T>> B_p = hat_map(p_a);
 
+    //std::cout << B_p << std::endl;
+
+    for (size_t i = 0; i < 3; i++)  {
+      x_diff(dim_per_transform + i) = x(body_index*dim_per_body + 18 + i);
+      x_diff(dim_per_transform + i).DValue(dim_per_transform + i) = 1;
+
+      x_diff(dim_per_transform + 3 + 3*i + 0) = B_p(i, 0);
+      x_diff(dim_per_transform + 3 + 3*i + 1) = B_p(i, 1);
+      x_diff(dim_per_transform + 3 + 3*i + 2) = B_p(i, 2);
+    }
+
+    std::cout << x_diff << std::endl;
+    
     for (size_t i: bodies_[body_index].Beams()) {
       Beam bm = beams_[i];
 
       size_t body_index_b = (body_index != bm.Body_index_a())? bm.Body_index_a() : bm.Body_index_b();
       body_index_b = (bm.Connector_a().Type() == ConnectorType::fix)? bm.Body_index_b() : body_index_b;
+      std::cout << bm.Body_index_a() << " " << (bm.Connector_a().Type() == ConnectorType::fix) << std::endl;
 
       Vector<AutoDiffDiff<dim_per_state, T>> q_b_diff = x.Range(dim_per_body * body_index_b,
                                                                 dim_per_body * body_index_b + dim_per_transform);
 
-      Vector<AutoDiffDiff<dim_per_state, T>> G_i = G(x_diff.Range(0, dim_per_transform), q_b_diff, bm);
+      //  Vector<AutoDiffDiff<dim_per_state, T>> G_i = G(x_diff.Range(0, dim_per_transform), q_b_diff, bm);
+
+      Vector<T> G_i = G(x.Range(body_index * dim_per_body, body_index * dim_per_body + dim_per_transform), 
+                      x.Range(dim_per_body * body_index_b, dim_per_body * body_index_b + dim_per_transform), bm);
+
+      std::cout << "G_i: " << G_i << std::endl;
 
       Vector<AutoDiffDiff<dim_per_state, T>> temp(2*dim_per_transform);
+      
+      temp.Range(0, 12) = bodies_[body_index].Mass_matrix_large_invers()*x_diff.Range(0, dim_per_transform);
 
-      temp.Range(0, 3) = 1./bodies_[body_index].mass() * x_diff.Range(dim_per_transform, dim_per_transform + 3);
+      Vector<T> x_b(12);
 
+      x_b.Range(0, 3) = x.Range(body_index_b * dim_per_body + 18, body_index_b * dim_per_body + 21);
+
+      Matrix<T> B_b = hat_map(x.Range(body_index_b * dim_per_body + 21, body_index_b * dim_per_body + 24));
+
+      x_b.Range(3, 12) = AsVector(B_b);
+
+      temp.Range(12, 24) = bodies_[body_index_b].Mass_matrix_large_invers() * x_b;
+
+      /*
       Matrix<AutoDiffDiff<dim_per_state, T>> B_a = bodies_[body_index].Mass_matrix_large_invers()*AsMatrix(x_diff.Range(3, dim_per_transform), 3, 3)
                           *hat_map(x_diff.Range(dim_per_transform + 3, 2 * dim_per_transform));
 
@@ -649,22 +706,22 @@ class RBS_FEM{
       temp.Range(12, 15) = 1./bodies_[body_index_b].mass() * x.Range(body_index_b*dim_per_body + 18, body_index_b*dim_per_body + 21);
 
       temp.Range(15, 24) = AsVector(B_b);
+      */
 
-
-      //std::cout << temp << std::endl;
+      std::cout << "temp: " << temp << std::endl;
       
       AutoDiffDiff<dim_per_state, T> rs = G_i*temp;
 
-      //std::cout << "res: " << rs << std::endl;
+      std::cout << "res: " << rs << std::endl;
 
       res = res + x(NumBodies()*dim_per_body + 2*bm.Index() + 1)*rs;
-      //std::cout << res << std::endl;
-
+      std::cout << res << std::endl;
+      
     }
-  
 
     for (size_t i = 0; i < dim_per_state; i++) {
       f(i) = res.DValue(i);
+      //std::cout << res.DValue(i) << std::endl;
     }
   }
 

@@ -18,7 +18,7 @@ int main()
   phat = 0;
   phat(3) = 0.01;
 
-  Matrix<double> inertia_matrix(3, 3);
+  Matrix<double> inertia_matrix = Diagonal(3, 1.0);
   MatrixView<double> inertia_v (inertia_matrix);
   RigidBody_FEM rb(q,phat,1,Vec<3>{0,0,0},inertia_v);
   q(0) = 2; q(1) = 2; q(2) = 2;

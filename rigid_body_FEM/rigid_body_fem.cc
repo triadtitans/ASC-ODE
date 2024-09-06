@@ -17,18 +17,18 @@ int main()
   phat = 0;
   phat(3) = 0.01;
 
-  Matrix<double> inertia_matrix(3, 3);
+  Matrix<double> inertia_matrix = Diagonal(3, 1.0);
   MatrixView<double> inertia_v (inertia_matrix);
   RigidBody_FEM rb(q,phat,1,Vec<3>{0,0,0},inertia_v);
   q(0) = 2; q(4) = 2; q(8) = 2;
   RigidBody_FEM rb2(q,phat,1,Vec<3>{0,0,0},inertia_v);
   /* RigidBody_FEM rb;
-  rb.setPhat_v(3, 0.01);
+  // rb.setPhat_v(3, 0.01);
 
   RigidBody_FEM rb2;
   rb2.setPhat_v(3, 0.01); */
   RBS_FEM rbs;
-  rbs.gravity() = {0, 0, 9.81};
+  rbs.gravity() = {0, 0, -9.81};
   /* rbs.bodies().push_back(rb);
   rbs.bodies().push_back(rb2); */
 
@@ -37,11 +37,12 @@ int main()
   // c1.pos = {1, 2, 3};
   c2.pos = {4, 5, 6};
   double len = Norm(rb.absolutePosOf(c1.pos) - rb2.absolutePosOf(c2.pos));
-  Connector c3 = rbs.addBody(rb2);
-  double len2 = Norm(rb.absolutePosOf(c1.pos) - rb2.absolutePosOf(c3.pos));
+  //Connector c3 = rbs.addBody(rb2);
+  //double len2 = Norm(rb.absolutePosOf(c1.pos) - rb2.absolutePosOf(c3.pos));
 
-  Beam bm1{0, c1, c3};
+  Beam bm1{0, c1, c2};
   rbs.addBeam(bm1);
+  std::cout << bm1.length << std::endl;
 
   //Spring spring{len, 0.1, c1, c2};
   //rbs.addSpring(spring);

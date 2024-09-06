@@ -42,6 +42,11 @@ int main()
   Beam bm1(c1, c3);
   rbs.add(bm1);
 
+  Beam bm2(c1, c2);
+  rbs.add(bm2);
+
+  std::cout << bm1.Length() << std::endl;
+
   //Spring spring(len, 0.1, c1, c2);
   //rbs.add(spring);
 

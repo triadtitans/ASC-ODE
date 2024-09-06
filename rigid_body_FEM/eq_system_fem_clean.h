@@ -35,14 +35,16 @@ class EQRigidBody : public NonlinearFunction
   Vector<double> force_old_;
   //  current constraint
   Vector<double> vel_con_old_;
+
+  Matrix<double> G_old_;
   // parent rigid body system
   RBS_FEM& rbs_;
   // index within bodies_ of parent rbs_
   size_t body_index_;
   
   public:
-  EQRigidBody(Transformation<double> Q, Vector<double> Phat, double h, RBS_FEM& rbs, size_t body_index, Vector<double> force_old, Vector<double> vel_con_old):
-      h_(h), Q_(Q), phatold_(Phat), rbs_(rbs), body_index_(body_index), force_old_(force_old), vel_con_old_(vel_con_old) {};
+  EQRigidBody(Transformation<double> Q, Vector<double> Phat, double h, RBS_FEM& rbs, size_t body_index, Vector<double> force_old, Vector<double> vel_con_old, Matrix<double> G_old):
+      h_(h), Q_(Q), phatold_(Phat), rbs_(rbs), body_index_(body_index), force_old_(force_old), vel_con_old_(vel_con_old), G_old_(G_old) {};
 
   size_t DimX() const  { return eq_per_body; }
   size_t DimF() const  { return eq_per_body; }
@@ -67,15 +69,30 @@ class EQRigidBody : public NonlinearFunction
     Matrix<double> Bold = Q_.getRotation();
     Vector<double> force_new(dim_per_transform);
     Vector<double> vel_con_new(dim_per_state);
+    Vector<double> g_con_new(dim_per_state);
+    Vector<double> g_con_old(dim_per_state);
+    
     rbs_.force(x, force_new, body_index_);
     rbs_.dvelocity_constraint(x,vel_con_new, body_index_);
-    //std::cout << "x1: " << x.Range(0,12) << std::endl;
+    Matrix<double> G_new(dim_per_transform, rbs_.NumBeams());
+    rbs_.G_body(x, body_index_, G_new);
+
+    g_con_new = G_new*x.Range(dim_per_body*rbs_.NumBodies(), x.Size()).Slice(1, 2);
+    g_con_old = G_old_*x.Range(dim_per_body*rbs_.NumBodies(), x.Size()).Slice(0, 2);
+    //std::cout << "G_old: " << G_old_ << std::endl;
+    //std::cout << "G_new: " << G_new << std::endl;
+    //std::cout << "g_con_new: " << g_con_new << std::endl;
+    //std::cout << "g_con_old: " << g_con_old << std::endl;
+
+    //std::cout << "x: " << x.Range(dim_per_body * body_index_, dim_per_body * (body_index_ + 1)) << std::endl;
     //std::cout << "x2: " << x.Range(30, 42) << std::endl;
+    //std::cout << "lambda 1: " << x(dim_per_body * rbs_.NumBodies()) << std::endl;
+    //std::cout << "lambda 2: " << x(dim_per_body * rbs_.NumBodies() + 1) << std::endl;
     //std::cout << "x: " << x << endl;
     //std::cout << "Body: " << body_index_ << " Force old: " << force_old_ << std::endl;
-    //std::cout << "Body: " << body_index_ << " Force new: " << rbs_.Bodies(body_index_).Force() << std::endl;
-    std::cout << "Body: " << body_index_ << " velcon old: " << vel_con_old_ << std::endl;
-    std::cout << "Body: " << body_index_ << "velcon new: " << vel_con_new << std::endl;
+    //std::cout << "Body: " << body_index_ << " Force new: " << force_new << std::endl;
+    //std::cout << "Body: " << body_index_ << " velcon old: " << vel_con_old_ << std::endl;
+    //std::cout << "Body: " << body_index_ << "velcon new: " << vel_con_new << std::endl;
 
     Matrix<double> Bhalf(3, 3);
     Bhalf = 0.5*(Bnew + Bold);
@@ -83,8 +100,8 @@ class EQRigidBody : public NonlinearFunction
     // std::cout << vskew << "\n" << std::endl;
 
     // I
-    f.Range(0, 3) = (1/h_)*(anew - aold) - vtrans - vel_con_new.Range(0, 3); // - dp_gv_new_.Range(0,3); // D_p(mü*D_2(C_v(q_old, phatold)))
-    f.Range(3, 6) = (1/h_)*inv_hat_map(Transpose(Bhalf)*(Bnew - Bold)) - vskew - vel_con_new.Range(3, 6); // dp_gv_new_.Range(3,6);
+    f.Range(0, 3) = (1/h_)*(anew - aold) - vtrans; // - vel_con_new.Range(dim_per_transform, dim_per_transform + 3); // - dp_gv_new_.Range(0,3); // D_p(mü*D_2(C_v(q_old, phatold)))
+    f.Range(3, 6) = (1/h_)*inv_hat_map(Transpose(Bhalf)*(Bnew - Bold)) - vskew; // - vel_con_new.Range(dim_per_transform + 3, dim_per_transform + 6); // dp_gv_new_.Range(3,6);
 
     // II
     Vector<double> vhat(6);
@@ -100,14 +117,14 @@ class EQRigidBody : public NonlinearFunction
     Matrix<double> B_force(3, 3); */
     
     // force<double, double> (0.5*(aold+anew), Bhalf, a_force, B_force);
-    f.Range(12, 15) = (2/h_)*(p.Range(0, 3) - phatold_.Range(0, 3)) - force_old_.Range(0, 3) - vel_con_old_.Range(0, 3); // - rbs_.get_translation(dq_gv_old_, 0); // Translation(  -D_q(mü*D_1(C_v(q_old,phat_old)))  )
-    f.Range(15, 18) = inv_hat_map((Transpose(Bold) * ((2/h_)*(Bhalf*hat_map(p.Range(3, 6)) - Bold*hat_map(phatold_.Range(3, 6))) - AsMatrix(force_old_.Range(3, 12), 3, 3) - AsMatrix(vel_con_old_.Range(3, 12), 3, 3) ) ) ); // - rbs_.get_rotation(dq_gv_old_, 0)))); //TODO: Are Bold and Bnew in the right order?
+    f.Range(12, 15) = (2/h_)*(p.Range(0, 3) - phatold_.Range(0, 3)) - force_old_.Range(0, 3) - g_con_old.Range(0, 3); // - vel_con_old_.Range(0, 3); // - rbs_.get_translation(dq_gv_old_, 0); // Translation(  -D_q(mü*D_1(C_v(q_old,phat_old)))  )
+    f.Range(15, 18) = inv_hat_map((Transpose(Bold) * ((2/h_)*(Bhalf*hat_map(p.Range(3, 6)) - Bold*hat_map(phatold_.Range(3, 6))) - AsMatrix(force_old_.Range(3, 12), 3, 3) - AsMatrix(g_con_old.Range(3, 12), 3, 3) ) ) ); // - AsMatrix(vel_con_old_.Range(3, 12), 3, 3) ) ) ); // - rbs_.get_rotation(dq_gv_old_, 0)))); //TODO: Are Bold and Bnew in the right order?
 
     // III - second half
     // force<double, double> (anew, Bnew, a_force, B_force);
-    f.Range(18, 21) = (2/h_)*(phat.Range(0, 3) - p.Range(0, 3)) - force_new.Range(0, 3) - vel_con_new.Range(0, 3); //- rbs_.get_translation(dq_gv_new_, 0); // Translation(  -D_q(mü*D_1(C_v(q_new,phat_old)))  )
+    f.Range(18, 21) = (2/h_)*(phat.Range(0, 3) - p.Range(0, 3)) - force_new.Range(0, 3) - g_con_new.Range(0, 3); // - vel_con_new.Range(0, 3); //- rbs_.get_translation(dq_gv_new_, 0); // Translation(  -D_q(mü*D_1(C_v(q_new,phat_old)))  )
     // std::cout << get_translation(force_new_, 0) << std::endl;
-    f.Range(21, 24) = inv_hat_map((Transpose(Bnew) * ((2/h_)*(Bnew*hat_map(phat.Range(3, 6)) - Bhalf*hat_map(p.Range(3, 6))) - AsMatrix(force_new.Range(3, 12), 3 ,3) - AsMatrix(vel_con_new.Range(3, 12), 3, 3) ) ) ); //- rbs_.get_rotation(dq_gv_new_, 0)))); //      TODO: Are Bold and Bnew in the right order?
+    f.Range(21, 24) = inv_hat_map((Transpose(Bnew) * ((2/h_)*(Bnew*hat_map(phat.Range(3, 6)) - Bhalf*hat_map(p.Range(3, 6))) - AsMatrix(force_new.Range(3, 12), 3 ,3) - AsMatrix(g_con_new.Range(3, 12), 3, 3) ) ) ); // - AsMatrix(vel_con_new.Range(3, 12), 3, 3) ) ) ); //- rbs_.get_rotation(dq_gv_new_, 0)))); //      TODO: Are Bold and Bnew in the right order?
 
     // Bnew must be orthonormal
     Matrix<double> eye = Diagonal(3, 1);
@@ -151,16 +168,21 @@ class EQRBS : public NonlinearFunction  {
 
       Vector<double> f(dim_per_transform);
       rbs.force(x, f, i);
-      std::cout << "force: " << f << std::endl;
+
+      Matrix<double> G_bod(dim_per_transform, rbs_.NumBeams());
+      //std::cout << "force: " << f << std::endl;
+      //std::cout << "G: " << G_body << std::endl;
 
       Vector<double> vel_con(dim_per_state);
       rbs.dvelocity_constraint(x, vel_con, i);
+
+      rbs_.G_body(x, i, G_bod);
       
       auto q = x.Range(i*dim_per_body,i*dim_per_body+12);
       std::cout << "q: " << q << std::endl;
       auto p = x.Range(i*dim_per_body+18,i*dim_per_body+24);
       std::cout << "p: " << p << std::endl;
-      std::shared_ptr<EQRigidBody> eq = std::make_shared<EQRigidBody>(Transformation<double>(q), p, h, rbs_, i, f, vel_con); //(Transformation<double>(q), p, h, rbs_, i);
+      std::shared_ptr<EQRigidBody> eq = std::make_shared<EQRigidBody>(Transformation<double>(q), p, h, rbs_, i, f, vel_con, G_bod); //(Transformation<double>(q), p, h, rbs_, i);
       
       _func->addFunction(eq);
       _functions.push_back(eq);
@@ -192,7 +214,7 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
 
   // copy over current values 
   rbs.getState(state);
-  std::cout << state << std::endl;
+  //std::cout << state << std::endl;
   x = rbs.stateToX(state);
   // std::cout << "first x: " << x << std::endl;
   for (size_t step=0; step < steps; step++){
@@ -216,6 +238,7 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
 
     //store data into different bodies
     rbs.setState(state);
+    
 
     /* Transformation<double> t = rbs.bodies()[1].q();
     std::cout << t << std::endl; */

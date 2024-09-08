@@ -17,21 +17,17 @@ namespace ASC_ode
     //std::cout << "x = " << x << std::endl;
     for (int i = 0; i < maxsteps; i++)
       {
-        //std::cout << "res ="<< res << std::endl;
         func->Evaluate(x, res);
-        //std::cout << "res ="<< res << std::endl;
-        //std::cout << "|res| = " << Norm(res) << std::endl;
+        
         func->EvaluateDeriv(x, fprime);
         //std::cout << "fprime = " << fprime << std::endl;
         Matrix<double> fprime_inv = inverse(fprime);
+
         //LapackLU<Ordering::RowMajor> lu_fprime(fprime);
         //Matrix<double> fprime_inv(lu_fprime.Inverse());
         //fprime = lu_fprime.Inverse();
-        //std::cout << "inv fprime = " << fprime_inv << std::endl;
-        //std::cout << "mult = " << fprime_inv*fprime << std::endl;
+        
         x -= fprime_inv*res;
-        std::cout << "new x = " << x << std::endl;
-
         
         double err = Norm(res);
         if (callback)

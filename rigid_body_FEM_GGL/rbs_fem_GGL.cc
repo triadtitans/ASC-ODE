@@ -36,14 +36,14 @@ int main()
   // c1.Pos() = {1, 2, 3};
   c2.Pos() = {4, 5, 6};
   double len = Norm(rb.absolutePosOf(c1.Pos()) - rb2.absolutePosOf(c2.Pos()));
-  //Connector c3 = rbs.add(rb2);
+  Connector c3 = rbs.add(rb2);
   //double len2 = Norm(rb.absolutePosOf(c1.Pos()) - rb2.absolutePosOf(c3.Pos()));
 
-  Beam bm1(c1, c2);
+  Beam bm1(c1, c3);
   rbs.add(bm1);
 
-  //Beam bm2(c1, c2);
-  //rbs.add(bm2);
+  Beam bm2(c1, c2);
+  rbs.add(bm2);
 
   std::cout << bm1.Length() << std::endl;
 

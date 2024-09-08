@@ -2,6 +2,7 @@
 #define FILE_AUTODIFFDIFF
 #include <iostream>
 #include <math.h>
+#include <vector.h>
 
 using namespace std;
 
@@ -16,10 +17,11 @@ namespace ASC_ode
     public:
 
         typedef AutoDiffDiff<D, SCAL> TELEM;
+        typedef SCAL TSCAL;
 
 
         /// elements are undefined
-        AutoDiffDiff  () throw() { ; }
+        AutoDiffDiff  () = default;
 
         /// copy constructor
         AutoDiffDiff  (const AutoDiffDiff & ad2) throw()
@@ -141,6 +143,9 @@ namespace ASC_ode
         SCAL DValue (size_t i) const throw() { return dval[i]; }
 
         SCAL* DValue () throw() { return dval;}
+        
+        /// returns gradient in Vector format
+        Vector<SCAL> DValue_vec () throw() {return VectorView(D, DValue());}
  
         /*
         AutoDiffVec<D,SCAL> DValueAD (size_t i) const
@@ -259,7 +264,7 @@ namespace ASC_ode
         return ost;
     }
 
-    template<size_t D, typename SCAL, typename SCAL2>
+    template<size_t D, typename SCAL, typename SCAL2, typename std::enable_if<std::is_convertible<SCAL2,SCAL>::value, int>::type = 0>
     inline AutoDiffDiff<D, SCAL> operator+ (SCAL2 x, const AutoDiffDiff<D, SCAL> & y) throw()
     {
         AutoDiffDiff<D, SCAL> res;
@@ -288,7 +293,7 @@ namespace ASC_ode
     }
 
     ///
-    template<size_t D, typename SCAL, typename SCAL2>
+    template<size_t D, typename SCAL, typename SCAL2, typename std::enable_if<std::is_convertible<SCAL2,SCAL>::value, int>::type = 0>
     inline AutoDiffDiff<D, SCAL> operator+ (const AutoDiffDiff<D, SCAL> & y, SCAL2 x) throw()
     {
         AutoDiffDiff<D, SCAL> res;
@@ -299,6 +304,17 @@ namespace ASC_ode
         /* for (size_t i = 0; i < D*D; i++) {
             res.DDValue(i) = y.DDValue(i);
         } */
+        return res;
+    }
+
+    /// minus AutoDiff
+    template<size_t D, typename SCAL>
+    inline AutoDiffDiff<D,SCAL> operator- (const AutoDiffDiff<D,SCAL> & x) throw()
+    {
+        AutoDiffDiff<D,SCAL> res;
+        res.Value() = -x.Value();
+        for (int i = 0; i < D; i++)
+            res.DValue(i) = -x.DValue(i);
         return res;
     }
 
@@ -318,7 +334,7 @@ namespace ASC_ode
 
 
     ///
-    template<size_t D, typename SCAL>
+    template<size_t D, typename SCAL, typename SCAL2, typename std::enable_if<std::is_convertible<SCAL2,SCAL>::value, int>::type = 0>
     inline AutoDiffDiff<D, SCAL> operator- (const AutoDiffDiff<D, SCAL> & x) throw()
     {
         AutoDiffDiff<D, SCAL> res;
@@ -333,7 +349,7 @@ namespace ASC_ode
     }
 
     ///
-    template<size_t D, typename SCAL, typename SCAL2>
+    template<size_t D, typename SCAL, typename SCAL2, typename std::enable_if<std::is_convertible<SCAL2,SCAL>::value, int>::type = 0>
     inline AutoDiffDiff<D, SCAL> operator- (const AutoDiffDiff<D, SCAL> & x, SCAL2 y) throw()
     {
         AutoDiffDiff<D, SCAL> res;
@@ -348,7 +364,7 @@ namespace ASC_ode
     }
 
     ///
-    template<size_t D, typename SCAL, typename SCAL2>
+    template<size_t D, typename SCAL, typename SCAL2, typename std::enable_if<std::is_convertible<SCAL2,SCAL>::value, int>::type = 0>
     inline AutoDiffDiff<D, SCAL> operator- (SCAL2 x, const AutoDiffDiff<D, SCAL> & y) throw()
     {
         AutoDiffDiff<D, SCAL> res;
@@ -364,7 +380,7 @@ namespace ASC_ode
 
 
     ///
-    template<size_t D, typename SCAL, typename SCAL2>
+    template<size_t D, typename SCAL, typename SCAL2, typename std::enable_if<std::is_convertible<SCAL2,SCAL>::value, int>::type = 0>
     inline AutoDiffDiff<D, SCAL> operator* (const SCAL2 x, const AutoDiffDiff<D, SCAL> & y) throw()
     {
         AutoDiffDiff<D, SCAL> res;
@@ -379,7 +395,7 @@ namespace ASC_ode
     }
 
     ///
-    template<size_t D, typename SCAL, typename SCAL2>
+    template<size_t D, typename SCAL, typename SCAL2, typename std::enable_if<std::is_convertible<SCAL2,SCAL>::value, int>::type = 0>
     inline AutoDiffDiff<D, SCAL> operator* (const AutoDiffDiff<D, SCAL> & y, SCAL2 x) throw()
     {
         AutoDiffDiff<D, SCAL> res;
@@ -446,7 +462,7 @@ namespace ASC_ode
     template<size_t D, typename SCAL, typename SCAL2>
     inline AutoDiffDiff<D, SCAL> operator/ (const AutoDiffDiff<D, SCAL> & x, SCAL2 y)
     {
-        return (1/y) * x;
+        return (1.0/y) * x;
     }
 
     template<size_t D, typename SCAL, typename SCAL2>

@@ -1,0 +1,19 @@
+find_package(Python 3.8 COMPONENTS Interpreter Development REQUIRED)
+
+execute_process(
+  COMMAND "${Python_EXECUTABLE}" -m pybind11 --cmakedir
+  OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE PYBIND11_DIR)
+list(APPEND CMAKE_PREFIX_PATH "${PYBIND11_DIR}")
+find_package(pybind11 CONFIG REQUIRED)
+
+find_package(LAPACK REQUIRED)
+
+pybind11_add_module(rigid_body_FEM_SR bind_rigid_body_FEM_SR.cc)
+target_link_libraries (rigid_body_FEM_SR PUBLIC)
+target_link_libraries (rigid_body_FEM_SR PUBLIC LAPACK::LAPACK)
+
+add_executable (test_rb_fem_SR rbs_fem_SR.cc)
+target_link_libraries (test_rb_fem_SR PUBLIC)
+target_link_libraries (test_rb_fem_SR PUBLIC LAPACK::LAPACK)
+
+target_compile_options(rigid_body_FEM_SR PRIVATE "-flto=auto")

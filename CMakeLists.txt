@@ -30,4 +30,6 @@ else()
     add_subdirectory (rigid_body_FEM)
 
     add_subdirectory (rigid_body_FEM_GGL)
+
+    add_subdirectory (rigid_body_FEM_SR)
 endif()

@@ -20,7 +20,7 @@ namespace ASC_ode
       {
         
         func->Evaluate(x, res);
-        
+        std::cout << "f: " << res << std::endl << std::endl;
         //std::cout<< "eval" << std::endl;
         
         func->EvaluateDeriv(x, fprime);

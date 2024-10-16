@@ -202,7 +202,7 @@ class EQRigidBody : public NonlinearFunction
     size_t curr_beam_index = 0;
     size_t prev_beam_index = 0;
     count = 0;
-
+    
     while (count < rbs_.Bodies(Index()).Beams().size()) {
       fb = 0;
       curr_beam_index = rbs_.Bodies(Index()).Beams(count);
@@ -258,6 +258,7 @@ class EQRigidBody : public NonlinearFunction
         view.Row(i) = fb(i).DValue_vec();
       }
     }    
+    
   }
 };
 
@@ -331,12 +332,14 @@ class EQRBS : public NonlinearFunction  {
 
     //  Evaluate all body equations
     func_->Evaluate(x,f);
-
+    //std::cout << "here!" << std::endl;
+    
     //  add the constraints at the end
     for (size_t i = 0; i < rbs_.NumBeams(); i++)  {
       f(rbs_.NumBodies()*dim_per_body + 2*i) = rbs_.g(x, i);
       f(rbs_.NumBodies()*dim_per_body + 2*i + 1) = rbs_.velocity_constraint(x, i);
     }
+    //std::cout << "again here!" << std::endl;
     
     
   }
@@ -354,7 +357,7 @@ class EQRBS : public NonlinearFunction  {
     Vector<AutoDiffDiff<2*dim_per_state, double>> x_diff = x;
     
     size_t prev_bm_index = 0;
-
+    
     //  take derivative of each beam constraints
     for (size_t j = 0; j < rbs_.NumBeams(); j++)  {
 
@@ -397,6 +400,7 @@ class EQRBS : public NonlinearFunction  {
         df(rbs_.NumBeams() * dim_per_body + 2 * j + 1, curr_bm.Body_index_b()*dim_per_body + 18 + i) = res_vel_con(dim_per_state + dim_per_transform + i);
       }
     }
+    
   }
 };
 
@@ -405,26 +409,41 @@ class EQRBS : public NonlinearFunction  {
 void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,double,VectorView<double>)> callback = nullptr ){
 
   Vector<double> state(dim_per_state*rbs.NumBodies() + 2*rbs.NumBeams());
-  Vector<double> x(dim_per_body*rbs.NumBodies() + 2*rbs.NumBeams());
+  Vector<double> q(dim_per_body*rbs.NumBodies() + 2*rbs.NumBeams());
 
   // get current state of system
   rbs.getState(state);
   
   // initialize vector with all temporary variables
-  x = rbs.stateToX(state);
+  q = rbs.stateToX(state);
+  //std::cout << "x: " << x << std::endl;
+  //std::cout << "state: " << state << std::endl;
   
-
   for (size_t step=0; step < steps; step++){
     std::shared_ptr<EQRBS> eq = std::make_shared<EQRBS>(rbs, state, rbs.NumBodies(), rbs.NumBeams(), tend/steps);
    
-    NewtonSolver(eq, x, 1e-10, 10, callback);
+    NewtonSolver(eq, q, 1e-10, 10, callback);
     
     // extract only state for propagation
-    state = rbs.xToState(x);
+    state = rbs.xToState(q);
 
     //store data into different bodies
     rbs.setState(state);
   }
+  //std::cout << "finished" << std::endl;
+  /*
+  std::cout<<std::fixed << "Body1 newton-iteration: " << " newton-error: " << std::scientific << std::fixed << std::endl
+                      <<"\t"<< "Translation =" << q(0) << " ," << q(1) << ", "<<", " << q(2) << "} " << std::endl
+                      <<"\t"<< " Rotation: " << q(3) << " ," << q(4) << ", "<<", " << q(5) << "} " << std::endl
+                      <<"\t"<< "           " << q(6) << " ," << q(7) << ", "<<", " << q(8) << "} " << std::endl
+                      <<"\t"<< "           " << q(9) << " ," << q(10) << ", "<<", " << q(11) << "} " << std::endl << std::endl
+                      << "Body2 newton-iteration: " << " newton-error: " << std::scientific << std::fixed << std::endl
+                      <<"\t"<< "Translation =" << q(0+30) << " ," << q(1+30) << ", "<<", " << q(2+30) << "} " << std::endl
+                      <<"\t"<< " Rotation: " << q(3+30) << " ," << q(4+30) << ", "<<", " << q(5+30) << "} " << std::endl
+                      <<"\t"<< "           " << q(6+30) << " ," << q(7+30) << ", "<<", " << q(8+30) << "} " << std::endl
+                      <<"\t"<< "           " << q(9+30) << " ," << q(10+30) << ", "<<", " << q(11+30) << "} " << std::endl << std::endl;
+  rbs.info_rbs();
+  */
 } 
 
 #endif

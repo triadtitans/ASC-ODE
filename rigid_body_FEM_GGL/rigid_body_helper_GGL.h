@@ -131,9 +131,9 @@ class Transformation{
 };
 
 std::ostream& operator<<(std::ostream& oss, const Transformation<double>& t){
-    oss<<std::fixed << " Translation: \t" << t.q_(0) << " ," << t.q_(4) << ", "<<", " << t.q_(8) << std::endl
-                    << " Rotation: \t" << t.q_(1) << " ," << t.q_(2) << ", "<<", " << t.q_(3) <<  std::endl
-                    << " \t\t" << t.q_(5) << " ," << t.q_(6) << ", "<<", " << t.q_(7) <<  std::endl
+    oss<<std::fixed << " Translation: \t" << t.q_(0) << " ," << t.q_(1) << ", "<<", " << t.q_(2) << std::endl
+                    << " Rotation: \t" << t.q_(3) << " ," << t.q_(4) << ", "<<", " << t.q_(5) <<  std::endl
+                    << " \t\t" << t.q_(6) << " ," << t.q_(7) << ", "<<", " << t.q_(8) <<  std::endl
                     << "\t\t" << t.q_(9) << " ," << t.q_(10) << ", "<<", " << t.q_(11) << std::endl; 
   return oss;
 }
@@ -246,6 +246,17 @@ class Connector{
   }
 };
 
+std::ostream& operator<<(std::ostream& oss, Connector& c){
+  if (c.Type() == ConnectorType::fix) {
+    oss<< std::fixed << "Type: fix" << std::endl;
+  } else  {
+    oss<< std::fixed << "Type: mass" << std::endl;
+  }
+  oss<< std::fixed << "Body_index: " << c.Body_index() << std::endl
+                   << "Position: " << c.Pos() << std::endl;
+  return oss;
+}
+
 
 // Handling position and force for Springs added to the system
 class Spring{
@@ -333,6 +344,15 @@ class Spring{
     }
   }
 };
+
+std::ostream& operator<<(std::ostream& oss, Spring& sp){
+  oss<<std::fixed << "Index: " << sp.Index() << std::endl
+                  << "Length: " << sp.Length() << std::endl
+                  << "Stiffness: " << sp.Stiffness() << std::endl
+                  << "Connector A: " << std::endl << sp.Connector_a() <<  std::endl
+                  << "Connector B: " << std::endl << sp.Connector_b() <<  std::endl;
+  return oss;
+}
 
 
 // Handling position and forces for Beams added to the system
@@ -430,5 +450,13 @@ class Beam  {
     //x_diff(dim_per_transform).DValue(dim_per_transform) = 1;
   }
 };
+
+std::ostream& operator<<(std::ostream& oss, Beam& bm){
+  oss<<std::fixed << "Index: " << bm.Index() << std::endl
+                  << "Length: " << bm.Length() << std::endl
+                  << "Connector A: " << std::endl << bm.Connector_a() <<  std::endl
+                  << "Connector B: " << std::endl << bm.Connector_b() <<  std::endl;
+  return oss;
+}
 
 #endif

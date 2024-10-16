@@ -359,7 +359,7 @@ class EQRBS : public NonlinearFunction  {
 
     //  Evaluate all body equations
     _func->Evaluate(x,f);
-
+    
     //  add the constraints at the end
     for (size_t i = 0; i < rbs_.NumBeams(); i++)  {
       f(rbs_.NumBodies()*dim_per_body + 2*i) = rbs_.g(x, i);

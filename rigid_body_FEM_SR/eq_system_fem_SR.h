@@ -5,6 +5,7 @@
 #include <math.h>
 #include <matrix.h>
 #include <vector.h>
+#include <expression.h>
 #include <ode.h>
 #include "../src/autodiffdiff.h"
 #include "rigid_body_helper_SR.h"
@@ -65,7 +66,7 @@ class EQRigidBody : public NonlinearFunction
     //  get known constants
     Vector<double> aold = Q_.getTranslation();
     Matrix<double> Bold = Q_.getRotation();
-
+    
     //  prepare force, and constraint vectors
     Vector<double> force_new(dim_per_transform);
     Vector<double> g_con_new(dim_per_transform);
@@ -77,8 +78,11 @@ class EQRigidBody : public NonlinearFunction
     rbs_.G_body(x, body_index_, G_new);
     
     //  calculate constraint values
-    g_con_new = G_new * x.Range(dim_per_body*rbs_.NumBodies(), x.Size()).Slice(1, 2);
-    g_con_old = G_old_ * x.Range(dim_per_body*rbs_.NumBodies(), x.Size()).Slice(0, 2);
+    //g_con_new = G_new * x.Range(dim_per_body*rbs_.NumBodies(), x.Size()).Slice(1, 2);
+    //g_con_old = G_old_ * x.Range(dim_per_body*rbs_.NumBodies(), x.Size()).Slice(0, 2);
+
+    rbs_.G_con(x, body_index_, g_con_old, true);
+    rbs_.G_con(x, body_index_, g_con_new, false);
 
     Matrix<double> Bhalf(3, 3);
     Bhalf = 0.5*(Bnew + Bold);
@@ -160,8 +164,11 @@ class EQRigidBody : public NonlinearFunction
       rbs_.G_body(x_diff, body_index_, G_new);
 
       //  calculate constraint values
-      g_con_new = G_new*x_diff.Range(dim_per_body*rbs_.NumBodies(), x_diff.Size()).Slice(1, 2);
-      g_con_old = G_old_*x_diff.Range(dim_per_body*rbs_.NumBodies(), x_diff.Size()).Slice(0, 2);
+      //g_con_new = G_new*x_diff.Range(dim_per_body*rbs_.NumBodies(), x_diff.Size()).Slice(1, 2);
+      //g_con_old = G_old_*x_diff.Range(dim_per_body*rbs_.NumBodies(), x_diff.Size()).Slice(0, 2);
+
+      rbs_.G_con(x_diff, body_index_, g_con_old, true);
+      rbs_.G_con(x_diff, body_index_, g_con_new, false);
 
       Matrix<AutoDiffDiff<dim_per_body, double>> Bhalf(3, 3);
       Bhalf = 0.5*(Bnew + Bold);
@@ -251,8 +258,10 @@ class EQRigidBody : public NonlinearFunction
       rbs_.G_body(xb_diff, body_index_, G_new);
 
       //  calculate constraint values
-      g_con_new = G_new*xb_diff.Range(dim_per_body*rbs_.NumBodies(), xb_diff.Size()).Slice(1, 2);
-      g_con_old = G_old_*xb_diff.Range(dim_per_body*rbs_.NumBodies(), xb_diff.Size()).Slice(0, 2);
+      //g_con_new = G_new*xb_diff.Range(dim_per_body*rbs_.NumBodies(), xb_diff.Size()).Slice(1, 2);
+      //g_con_old = G_old_*xb_diff.Range(dim_per_body*rbs_.NumBodies(), xb_diff.Size()).Slice(0, 2);
+      rbs_.G_con(xb_diff, body_index_, g_con_old, true);
+      rbs_.G_con(xb_diff, body_index_, g_con_new, false);
       
       Matrix<AutoDiffDiff<2, double>> Bhalf(3, 3);
       Bhalf = 0.5*(Bnew + Bold);
@@ -369,7 +378,7 @@ class EQRBS : public NonlinearFunction  {
   }
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
   { 
-
+    
     //  extract the all rows with body equations
     MatrixView<double> current_block = df.Rows(0, dim_per_body*rbs_.NumBodies());
 

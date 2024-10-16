@@ -74,7 +74,7 @@ public:
         :   mass_matrix_(Diagonal<double>(6, 1.0)),
           q_(12), initialq_(12), phat_(6), initialphat_(6), inertia_(3,3),center_of_mass_{0,0,0},
           force_(Vector<double>(dim_per_transform)), vel_con_(Vector<double>(dim_per_state)),  mass_matrix_inverse_(Diagonal<double>(6, 1.0)) {
-    q_(1)=1;q_(6)=1;q_(11)=1;
+    q_(3)=1;q_(7)=1;q_(11)=1;
   };
 
   size_t& Index()  {
@@ -85,6 +85,9 @@ public:
   }
   std::vector<size_t> Springs() const {
     return springs_;
+  }
+  size_t Springs(size_t i)  {
+    return springs_[i];
   }
   size_t NumSprings() const {
     return springs_.size();
@@ -140,6 +143,33 @@ public:
   Matrix<double>& Mass_matrix_inverse() {
     return mass_matrix_inverse_;
   }
+  void info_rb()  {
+    
+    std::cout << "Body Info Index: " << Index() << std::endl
+              << "q: " << q_ << std::endl
+              << "phat: " << phat_ << std::endl
+              << "initialq: " << initialq_ << std::endl
+              << "initialphat: " << initialphat_ << std::endl
+              << "mass: " << mass_ << std::endl
+              << "mass Matrix: " << std::endl << mass_matrix_ << std::endl 
+              << "mass matrix inverse: " << std::endl << mass_matrix_inverse_ << std::endl
+              << "Connected_Bodies: ";
+    for (size_t i = 0; i < Connected_Bodies().size(); i++)  {
+      std::cout << Connected_Bodies(i) << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "Center: " << center() << std::endl
+              << "Springs Index: ";
+    for (size_t i = 0; i < Springs().size(); i++)  {
+      std::cout << Springs(i) << " ";
+    }
+    std::cout << std::endl << "Beams Index: ";
+    for (size_t i = 0; i < Beams().size(); i++)  {
+      std::cout << Beams(i) << " ";
+    }
+    std::cout << std::endl << "Body " << Index() << " end!" << std::endl << std::endl;
+  }
+
   void setQ(Transformation<> t) {
     q_=t.q_;
   }
@@ -245,6 +275,22 @@ class RBS_FEM{
   MatrixView<double> getGlobalMassInverse() const {
     return global_mass_inv_; 
   }
+  void info_rbs() {
+    for(size_t i = 0; i < NumBodies(); i++) {
+      Bodies(i).info_rb();
+    }
+    std::cout << "Number of Springs in System: " << NumSprings() << std::endl;
+    for(size_t i = 0; i < NumSprings(); i++) {
+      std::cout << "Spring: " << i << std::endl;
+      std::cout << Springs(i) << std::endl;
+    }
+    std::cout << "Number of Beams in System: " << NumBeams() << std::endl;
+    for(size_t i = 0; i < NumBeams(); i++) {
+      std::cout << "Beam: " << i << std::endl;
+      std::cout << Beams(i) << std::endl;
+    }
+    std::cout << Gravity() << std::endl;
+  }
   void getState(VectorView<double> out){
     for(int i=0; i<NumBodies(); i++){
       out.Range(i*dim_per_state,i*dim_per_state+12)=bodies_[i].q();
@@ -258,13 +304,13 @@ class RBS_FEM{
   void setState(VectorView<double> x)  {
     for(int i=0; i<NumBodies(); i++)  {
 
-      bodies_[i].q() = x.Range(i * dim_per_body, i * dim_per_body + 12);
-      bodies_[i].phat() = x.Range(i * dim_per_body + 12, (i + 1) * dim_per_body + 18);
+      bodies_[i].q() = x.Range(i * dim_per_state, i * dim_per_state + 12);
+      bodies_[i].phat() = x.Range(i * dim_per_state +12 , (i + 1) * dim_per_state);
     }
 
     for (int i=0; i < 2 * NumBeams(); i++)  {
 
-      lag_params[i] = x(NumBodies() * dim_per_body + i);
+      lag_params[i] = x(NumBodies() * dim_per_state + i);
 
     }
   }
@@ -452,6 +498,19 @@ class RBS_FEM{
     return Connector{ConnectorType::fix, {0,0,0}, 0};
   }
 
+  Vec<3> connectorPos(Connector c)  {
+    Vec<3> pos;
+    if (c.Type() == ConnectorType::mass){
+      // c.pos is relative position
+      return bodies_[c.Body_index()].absolutePosOf(c.Pos());
+    }
+    else if (c.Type() == ConnectorType::fix){
+      // c.pos is already absolute
+      return c.Pos();
+    }
+    else throw invalid_argument("unknown ConnectorType");
+  }
+
   //  gravitational force
   template <typename T>
   Vector<T> gravitation_force(VectorView<T> q, size_t body_index) const {
@@ -526,6 +585,57 @@ class RBS_FEM{
     return (pos1-pos2)*(pos1-pos2) - bm.Length()*bm.Length();
   }
 
+    //  derivative of first constraint
+  template<typename T>
+  Vector<T> G_test(VectorView<T> q_a, VectorView<T> q_b, Beam& bm) {
+    
+    Vector<T> res(2*dim_per_transform);
+
+    Vec<3, T> pos1 = bm.Connector_a().Pos();
+    Vec<3, T> pos2 = bm.Connector_a().Pos();
+
+    if (bm.Connector_a().Type() == ConnectorType::fix)  {
+      for (size_t i = 0; i < 3; i++)  {
+        T row = pos1(i) - q_b.Range(3 + i*3, 3 + i*3 + 3)*pos2 - q_b(i);
+
+        res(i) = 0;
+        res(dim_per_transform + i) = (-1)*row;
+
+        for (size_t j = 0; j < 3; j ++) {
+          res(3 + i*3 + j) = 0;
+          res(dim_per_transform + i*3 + j) =  (-1)*pos2(j)*row;
+        }
+      }
+    }
+    else if (bm.Connector_a().Type() == ConnectorType::fix)  {
+      for (size_t i = 0; i < 3; i++)  {
+        T row = q_a.Range(3 + i*3, 3 + i*3 + 3)*pos1 - q_a(i) - pos2(i);
+
+        res(i) = 0;
+        res(dim_per_transform + i) = (-1)*row;
+
+        for (size_t j = 0; j < 3; j ++) {
+          res(3 + i*3 + j) = pos1(j)*row;
+          res(dim_per_transform + i*3 + j) = 0;
+        }
+      }
+    }
+    else {
+      for (size_t i = 0; i < 3; i++)  {
+        T row = q_a.Range(3 + i*3, 3 + i*3 + 3)*pos1 - q_a(i) - q_b.Range(3 + i*3, 3 + i*3 + 3)*pos2 + q_b(i);
+
+        res(i) = row;
+        res(dim_per_transform + i) = (-1)*row;
+
+        for (size_t j = 0; j < 3; j ++) {
+          res(3 + i*3 + j) = pos1(j)*row;
+          res(dim_per_transform + i*3 + j) =  (-1)*pos2(j)*row;
+        }
+      }
+    }
+    return res;
+  }
+
   //  derivative of first constraint
   template<typename T>
   Vector<T> G(VectorView<T> q_a, VectorView<T> q_b, Beam& bm) {
@@ -546,7 +656,7 @@ class RBS_FEM{
     // calclation of potential and force
     Vec<3, AutoDiffDiff<2*dim_per_transform, T>> pos1 = bm.Connector_a().absPos(x_diff.Range(0, dim_per_transform));
     Vec<3, AutoDiffDiff<2*dim_per_transform, T>> pos2 = bm.Connector_b().absPos(x_diff.Range(dim_per_transform, 2*dim_per_transform));
-    
+
     res(0) = (pos1-pos2)*(pos1-pos2) - bm.Length()*bm.Length();
     
 
@@ -587,8 +697,8 @@ class RBS_FEM{
     AutoDiffDiff<dim_per_state, T> res;
     Vector<AutoDiffDiff<dim_per_state, T>> x_diff(dim_per_state);
     Vector<AutoDiffDiff<dim_per_state, T>> x_q_diff(dim_per_transform);
-    //Vector<AutoDiffDiff<dim_per_state, T>> G_i(2*dim_per_transform);
-    Vector<T> G_i(2*dim_per_transform);
+    Vector<AutoDiffDiff<dim_per_state, T>> G_i(2*dim_per_transform);
+    //Vector<T> G_i(2*dim_per_transform);
     Vector<AutoDiffDiff<dim_per_state, T>> temp(2*dim_per_transform);
 
 
@@ -609,13 +719,13 @@ class RBS_FEM{
 
       if ((body_index == bm.Body_index_a()) && (bm.Connector_a().Type() != ConnectorType::fix)) {
         x_q_diff.Range(0, dim_per_transform) = x.Range(dim_per_body * b, dim_per_body * b + dim_per_transform);
-        /*
+        
         G_i = G(x_diff.Range(0, dim_per_transform), 
                         x_q_diff.Range(0, dim_per_transform), bm);
-        */
+        /*
         G_i = G(x.Range(a*dim_per_body, a*dim_per_body + dim_per_transform), 
                         x.Range(b*dim_per_body, b*dim_per_body + dim_per_transform), bm);
-
+        */
         Vector<AutoDiffDiff<dim_per_state, T>> mp_a = bodies_[body_index].Mass_matrix_inverse()*x_diff.Range(dim_per_transform, dim_per_state);
         
         temp.Range(0, 12) = hat_map_vector(mp_a);
@@ -628,13 +738,13 @@ class RBS_FEM{
       else {
         
         x_q_diff.Range(0, dim_per_transform) = x.Range(dim_per_body * a, dim_per_body * a + dim_per_transform);
-        /*
+        
         G_i = G(x_q_diff.Range(0, dim_per_transform), 
                         x_diff.Range(0, dim_per_transform), bm);
-        */
+        /*
         G_i = G(x.Range(a*dim_per_body, a*dim_per_body + dim_per_transform), 
                         x.Range(b*dim_per_body, b*dim_per_body + dim_per_transform), bm);
-
+        */
         temp(2*dim_per_transform);
 
         Vector<AutoDiffDiff<dim_per_state, T>> mp_a = bodies_[a].Mass_matrix_inverse()*x.Range(a * dim_per_body + 18, a * dim_per_body + 24);

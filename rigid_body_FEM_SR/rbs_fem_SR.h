@@ -72,7 +72,7 @@ public:
         :   mass_matrix_(Diagonal<double>(6, 1.0)),
           q_(12), initialq_(12), phat_(6), initialphat_(6), inertia_(3,3),center_of_mass_{0,0,0}, 
           force_(Vector<double>(dim_per_transform)), vel_con_(Vector<double>(dim_per_state)),  mass_matrix_inverse_(Diagonal<double>(6, 1.0)) {
-    q_(1)=1;q_(6)=1;q_(11)=1;
+    q_(3)=1;q_(7)=1;q_(11)=1;
   };
 
   size_t& Index()  {
@@ -164,6 +164,7 @@ public:
   // saves a state for the reset button
   void saveState()  {
     initialq_ = q_;
+    
     initialphat_ = phat_;
   }
 
@@ -251,7 +252,6 @@ class RBS_FEM{
     for(int i=0; i<NumBodies(); i++){
       out.Range(i*dim_per_state,i*dim_per_state+12)=bodies_[i].q();
       out.Range(i*dim_per_state + 12, (i+1)*dim_per_state)=bodies_[i].phat();
-      std::cout << "getState: " << bodies_[i].phat() << std::endl;
     }
     for (int i=0; i < 2*NumBeams(); i++){
       out(NumBodies()*dim_per_state + i) = lag_params[i];
@@ -301,7 +301,7 @@ class RBS_FEM{
     }
 
     //  copy Lagrange Parameters
-    res.Range(NumBodies()*eq_per_body, res.Size()) = state.Range(NumBodies()*dim_per_state, state.Size());
+    res.Range(NumBodies()*eq_per_body, res.Size()) = 0;//state.Range(NumBodies()*dim_per_state, state.Size());
 
     return res;
   }
@@ -435,6 +435,21 @@ class RBS_FEM{
   Connector addFix(){
     return Connector{ConnectorType::fix, {0,0,0}, 0};
   }
+
+  Vec<3> connectorPos(Connector c)  {
+    Vec<3> pos;
+    if (c.Type() == ConnectorType::mass){
+      // c.pos is relative position
+      return bodies_[c.Body_index()].absolutePosOf(c.Pos());
+    }
+    else if (c.Type() == ConnectorType::fix){
+      // c.pos is already absolute
+      return c.Pos();
+    }
+    else throw invalid_argument("unknown ConnectorType");
+  }
+
+
   //  force calculation
   template <typename T>
   Vector<T> gravitation_force(VectorView<T> q, size_t body_index) const {
@@ -536,6 +551,25 @@ class RBS_FEM{
     temp.Range(0, 12) = hat_map_vector(mp_b);
     
     return G_i*temp;
+  }
+
+  template<typename T>
+  void G_con(VectorView<T> x, size_t body_index, VectorView<T> f, bool timestep_start=true) {
+    size_t add = (timestep_start)? 0 : 1;
+    for (size_t i: bodies_[body_index].Beams()) {
+      Beam bm = beams_[i];
+
+      bool diff_index = ((body_index == bm.Body_index_a()) && (bm.Connector_a().Type() != ConnectorType::fix));
+      
+      Vector<T> b_f = bm.force(x.Range(dim_per_body * bm.Body_index_a(), 
+                                        dim_per_body * bm.Body_index_a() + dim_per_transform),
+                                x.Range(dim_per_body * bm.Body_index_b(),
+                                        dim_per_body * bm.Body_index_b() + dim_per_transform), diff_index);
+      
+      for (size_t j = 0; j < b_f.Size(); j++)  {
+        f(j) += b_f(j) * x(dim_per_body*NumBodies() + 2*i + add);
+      }
+    }
   }
 
   template<typename T>

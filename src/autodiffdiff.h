@@ -145,7 +145,13 @@ namespace ASC_ode
         SCAL* DValue () throw() { return dval;}
         
         /// returns gradient in Vector format
-        Vector<SCAL> DValue_vec () throw() {return VectorView(D, DValue());}
+        Vector<SCAL> DValue_vec () throw() {
+            Vector<SCAL> res(D?D:1);
+            for (size_t i = 0; i < D; i++)  {
+                res(i) = dval[i];
+            }
+            return res;
+        }
  
         /*
         AutoDiffVec<D,SCAL> DValueAD (size_t i) const

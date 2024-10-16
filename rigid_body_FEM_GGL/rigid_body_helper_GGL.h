@@ -320,7 +320,7 @@ class Spring{
 
       AutoDiffDiff<dim_per_transform, T> norm = Norm(pos1-pos2) - length_;
       res(0) = (1/2.0)*Stiffness()*(norm * norm);
-      Vector<T> res_f = VectorView(dim_per_transform, res(0).DValue());
+      Vector<T> res_f = res(0).DValue_vec();
       //  std::cout << "Sprint_force: " << res_f << std::endl;
       return res_f;
       
@@ -337,7 +337,7 @@ class Spring{
 
       AutoDiffDiff<dim_per_transform, T> norm = Norm(pos1-pos2) - length_;
       res(0) = (1/2.0)*Stiffness()*(norm * norm);
-      Vector<T> res_f = VectorView(dim_per_transform, res(0).DValue());
+      Vector<T> res_f = res(0).DValue_vec();
       //  std::cout << "Sprint_force: " << res_f << std::endl;
       return res_f;
       
@@ -420,7 +420,7 @@ class Beam  {
       //std::cout << "length: " << length_ << std::endl;
       //std::cout << "lambda: " << lambda << std::endl;
     
-      return VectorView( dim_per_transform, res(0).DValue());
+      return res(0).DValue_vec();
       
     } else  {
       for (size_t i = 0; i < dim_per_transform; i++)  {
@@ -440,7 +440,7 @@ class Beam  {
       //std::cout << "pos2: " << pos2 << std::endl;
       //std::cout << "length: " << length_ << std::endl;
       //std::cout << "lambda: " << lambda << std::endl;
-      return VectorView(dim_per_transform, res(0).DValue());
+      return res(0).DValue_vec();
       
     }
     

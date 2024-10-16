@@ -24,7 +24,7 @@ namespace ASC_ode
         //std::cout<< "eval" << std::endl;
         
         func->EvaluateDeriv(x, fprime);
-        
+        break;
         //std::cout << std::setprecision(2) << "fprime = " << fprime << std::endl;
         Matrix<double> fprime_inv = inverse(fprime);
 

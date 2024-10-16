@@ -515,6 +515,7 @@ class RBS_FEM{
   template <typename T>
   Vector<T> gravitation_force(VectorView<T> q, size_t body_index) const {
     Vector<AutoDiffDiff<dim_per_transform, T>> q_diff(dim_per_transform);
+    //std::cout << "q: " << q << std::endl;
     
 
     for(size_t i = 0; i < dim_per_transform; i++) {
@@ -525,8 +526,10 @@ class RBS_FEM{
     //  std::cout << q << std::endl; 
 
     auto t = Transformation<AutoDiffDiff<dim_per_transform, T>>(q_diff);
-    VectorView<T> res(dim_per_transform, ((-1)*bodies_[body_index].mass() * t.apply(bodies_[body_index].center()) * gravity_).DValue());
+    //std::cout << t.apply(bodies_[body_index].center()) * gravity_ << std::endl;
+    Vector<T> res = ((-1)*bodies_[body_index].mass() * t.apply(bodies_[body_index].center()) * gravity_).DValue_vec();
     //std::cout << ((-1)*bodies_[body_index].mass() * t.apply(bodies_[body_index].center()) * gravity_).Value() << std::endl;
+    //std::cout << "res: " << res << std::endl;
     return res;
   }
 
@@ -665,7 +668,7 @@ class RBS_FEM{
     res(0) = (pos1-pos2)*(pos1-pos2) - bm.Length()*bm.Length();
     
 
-    return VectorView(2*dim_per_transform, res(0).DValue());
+    return res(0).DValue_vec();
   }
 
   // secondary constraint

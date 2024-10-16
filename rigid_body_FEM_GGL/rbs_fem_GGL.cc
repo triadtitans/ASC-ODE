@@ -64,7 +64,7 @@ int main()
   }
   */
  
-  for( size_t i = 0; i <3; i++) 
+  for( size_t i = 0; i <1; i++) 
   simulate(rbs,tend, steps, [](int i, double t, VectorView<double> q) {
                     std::cout<<std::fixed << "Body1 newton-iteration: " << i << " newton-error: " << std::scientific << t << std::fixed << std::endl
                       <<"\t"<< "Translation =" << q(0) << " ," << q(1) << ", "<<", " << q(2) << "} " << std::endl

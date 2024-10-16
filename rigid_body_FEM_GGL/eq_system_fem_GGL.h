@@ -357,7 +357,7 @@ class EQRBS : public NonlinearFunction  {
     Vector<AutoDiffDiff<2*dim_per_state, double>> x_diff = x;
     
     size_t prev_bm_index = 0;
-    
+    /*
     //  take derivative of each beam constraints
     for (size_t j = 0; j < rbs_.NumBeams(); j++)  {
 
@@ -400,7 +400,7 @@ class EQRBS : public NonlinearFunction  {
         df(rbs_.NumBeams() * dim_per_body + 2 * j + 1, curr_bm.Body_index_b()*dim_per_body + 18 + i) = res_vel_con(dim_per_state + dim_per_transform + i);
       }
     }
-    
+    */
   }
 };
 

@@ -92,7 +92,7 @@ namespace ASC_ode
     void EvaluateDeriv (VectorView<double> x, MatrixView<double> f) const override{
       size_t cursor_f=0;
       f=0;
-      for(int i=0;i<_functions.size();i++ ){
+      for(size_t i=0; i <_functions.size();i++ ){
         auto func = _functions[i];
         //The Jacobian of the stacked function is a block diagonal matrix, consisting of the individual Jacobians
         MatrixView<double> currentBlock = f.Rows(cursor_f,func->DimF());

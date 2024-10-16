@@ -294,7 +294,7 @@ class EQRBS : public NonlinearFunction  {
     //  initialize x
     x = rbs.stateToX(state);
     
-    for(int i=0;i<numbodies_;i++) {
+    for(size_t i=0;i<numbodies_;i++) {
       
       //  calculate force at start of time step (not done in the body equation for performance)
       Vector<double> f(dim_per_transform);

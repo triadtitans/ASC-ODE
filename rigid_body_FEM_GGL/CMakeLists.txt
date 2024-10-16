@@ -15,5 +15,7 @@ target_link_libraries (rigid_body_FEM_GGL PUBLIC LAPACK::LAPACK)
 add_executable (test_rb_fem_GGL rbs_fem_GGL.cc)
 target_link_libraries (test_rb_fem_GGL PUBLIC)
 target_link_libraries (test_rb_fem_GGL PUBLIC LAPACK::LAPACK)
+target_compile_options(test_rb_fem_GGL PRIVATE "-mno-fma")
 
 target_compile_options(rigid_body_FEM_GGL PRIVATE "-flto=auto")
+target_compile_options(rigid_body_FEM_GGL PRIVATE "-mno-fma") #-Wall -Wextra

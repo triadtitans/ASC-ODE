@@ -292,23 +292,23 @@ class RBS_FEM{
     std::cout << Gravity() << std::endl;
   }
   void getState(VectorView<double> out){
-    for(int i=0; i<NumBodies(); i++){
+    for(size_t i=0; i<NumBodies(); i++){
       out.Range(i*dim_per_state,i*dim_per_state+12)=bodies_[i].q();
       out.Range(i*dim_per_state + 12, (i+1)*dim_per_state)=bodies_[i].phat();
       //std::cout << "getState: " << bodies_[i].phat() << std::endl;
     }
-    for (int i=0; i < 2*NumBeams(); i++){
+    for (size_t i=0; i < 2*NumBeams(); i++){
       out(NumBodies()*dim_per_state + i) = lag_params[i];
     }
   }
   void setState(VectorView<double> x)  {
-    for(int i=0; i<NumBodies(); i++)  {
+    for(size_t i=0; i<NumBodies(); i++)  {
 
       bodies_[i].q() = x.Range(i * dim_per_state, i * dim_per_state + 12);
       bodies_[i].phat() = x.Range(i * dim_per_state +12 , (i + 1) * dim_per_state);
     }
 
-    for (int i=0; i < 2 * NumBeams(); i++)  {
+    for (size_t i=0; i < 2 * NumBeams(); i++)  {
 
       lag_params[i] = x(NumBodies() * dim_per_state + i);
 
@@ -518,7 +518,7 @@ class RBS_FEM{
     
 
     for(size_t i = 0; i < dim_per_transform; i++) {
-      q_diff(i) = q_diff(i);
+      q_diff(i) = q(i);
       q_diff(i).DValue(i) = 1;
     }
 
@@ -538,7 +538,10 @@ class RBS_FEM{
     //  gravitational force
     f.Range(0, dim_per_transform) -= gravitation_force(x.Range(dim_per_body * body_index, 
                                         dim_per_body * body_index + dim_per_transform), body_index);
-
+    //std:cout << std::endl; //"grav_force: " << gravitation_force(x.Range(dim_per_body * body_index, 
+                             //           dim_per_body * body_index + dim_per_transform), body_index) << std::endl;
+    //gravitation_force(x.Range(dim_per_body * body_index, 
+    //                                    dim_per_body * body_index + dim_per_transform), body_index);
     //  add force coming from connected spring
     for (size_t i: bodies_[body_index].Springs()) {
       Spring spr = springs_[i];
@@ -551,6 +554,8 @@ class RBS_FEM{
                                         dim_per_body * spr.Body_index_b() + dim_per_transform), diff_index);
 
       f.Range(0, dim_per_transform) -= s_f.Range(0, dim_per_transform);
+
+    
     }
 
     //  add force coming from connected beams

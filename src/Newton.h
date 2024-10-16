@@ -37,7 +37,6 @@ namespace ASC_ode
         double err = Norm(res);
         if (callback)
           callback(i, err, x);
-          return;
         if (err < tol) return;
       }
 

@@ -20,12 +20,11 @@ namespace ASC_ode
       {
         
         func->Evaluate(x, res);
-        std::cout << "f: " << res << std::endl << std::endl;
+        //std::cout << "f: " << res << std::endl << std::endl;
         //std::cout<< "eval" << std::endl;
         
         func->EvaluateDeriv(x, fprime);
-        break;
-        //std::cout << std::setprecision(2) << "fprime = " << fprime << std::endl;
+        //std::cout << "fprime = " << fprime << std::endl;
         Matrix<double> fprime_inv = inverse(fprime);
 
         //LapackLU<Ordering::RowMajor> lu_fprime(fprime);

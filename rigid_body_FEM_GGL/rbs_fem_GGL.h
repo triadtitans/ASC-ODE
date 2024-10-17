@@ -600,44 +600,44 @@ class RBS_FEM{
     Vector<T> res(2*dim_per_transform);
 
     Vec<3, T> pos1 = bm.Connector_a().Pos();
-    Vec<3, T> pos2 = bm.Connector_a().Pos();
+    Vec<3, T> pos2 = bm.Connector_b().Pos();
 
     if (bm.Connector_a().Type() == ConnectorType::fix)  {
       for (size_t i = 0; i < 3; i++)  {
-        T row = pos1(i) - q_b.Range(3 + i*3, 3 + i*3 + 3)*pos2 - q_b(i);
+        T row = 2*(pos1(i) - q_b.Range(3 + i*3, 3 + i*3 + 3)*pos2 - q_b(i));
 
         res(i) = 0;
         res(dim_per_transform + i) = (-1)*row;
 
         for (size_t j = 0; j < 3; j ++) {
           res(3 + i*3 + j) = 0;
-          res(dim_per_transform + i*3 + j) =  (-1)*pos2(j)*row;
+          res(dim_per_transform + 3 + i*3 + j) =  (-1)*pos2(j)*row;
         }
       }
     }
-    else if (bm.Connector_a().Type() == ConnectorType::fix)  {
+    else if (bm.Connector_b().Type() == ConnectorType::fix)  {
       for (size_t i = 0; i < 3; i++)  {
-        T row = q_a.Range(3 + i*3, 3 + i*3 + 3)*pos1 - q_a(i) - pos2(i);
+        T row = 2*(q_a.Range(3 + i*3, 3 + i*3 + 3)*pos1 + q_a(i) - pos2(i));
 
-        res(i) = 0;
-        res(dim_per_transform + i) = (-1)*row;
+        res(i) = row;
+        res(dim_per_transform + i) = 0;
 
         for (size_t j = 0; j < 3; j ++) {
           res(3 + i*3 + j) = pos1(j)*row;
-          res(dim_per_transform + i*3 + j) = 0;
+          res(dim_per_transform + 3 + i*3 + j) = 0;
         }
       }
     }
     else {
       for (size_t i = 0; i < 3; i++)  {
-        T row = q_a.Range(3 + i*3, 3 + i*3 + 3)*pos1 - q_a(i) - q_b.Range(3 + i*3, 3 + i*3 + 3)*pos2 + q_b(i);
+        T row = 2*(q_a.Range(3 + i*3, 3 + i*3 + 3)*pos1 + q_a(i) - q_b.Range(3 + i*3, 3 + i*3 + 3)*pos2 - q_b(i));
 
         res(i) = row;
         res(dim_per_transform + i) = (-1)*row;
 
         for (size_t j = 0; j < 3; j ++) {
           res(3 + i*3 + j) = pos1(j)*row;
-          res(dim_per_transform + i*3 + j) =  (-1)*pos2(j)*row;
+          res(dim_per_transform + 3 + i*3 + j) =  (-1)*pos2(j)*row;
         }
       }
     }
@@ -680,7 +680,7 @@ class RBS_FEM{
     size_t body_index_b = bm.Connector_b().Body_index();
     size_t body_index_a = bm.Connector_a().Body_index();
 
-    Vector<T> G_i = G(x.Range(body_index_a * dim_per_body, body_index_a * dim_per_body + dim_per_transform), 
+    Vector<T> G_i = G_test(x.Range(body_index_a * dim_per_body, body_index_a * dim_per_body + dim_per_transform), 
                       x.Range(body_index_b * dim_per_body, body_index_b * dim_per_body + dim_per_transform), bm);
 
     Vector<T> temp(2*dim_per_transform);
@@ -728,7 +728,7 @@ class RBS_FEM{
       if ((body_index == bm.Body_index_a()) && (bm.Connector_a().Type() != ConnectorType::fix)) {
         x_q_diff.Range(0, dim_per_transform) = x.Range(dim_per_body * b, dim_per_body * b + dim_per_transform);
         
-        G_i = G(x_diff.Range(0, dim_per_transform), 
+        G_i = G_test(x_diff.Range(0, dim_per_transform), 
                         x_q_diff.Range(0, dim_per_transform), bm);
         /*
         G_i = G(x.Range(a*dim_per_body, a*dim_per_body + dim_per_transform), 
@@ -747,7 +747,7 @@ class RBS_FEM{
         
         x_q_diff.Range(0, dim_per_transform) = x.Range(dim_per_body * a, dim_per_body * a + dim_per_transform);
         
-        G_i = G(x_q_diff.Range(0, dim_per_transform), 
+        G_i = G_test(x_q_diff.Range(0, dim_per_transform), 
                         x_diff.Range(0, dim_per_transform), bm);
         /*
         G_i = G(x.Range(a*dim_per_body, a*dim_per_body + dim_per_transform), 

@@ -166,7 +166,8 @@ PYBIND11_MODULE(rigid_body_FEM_GGL, rbdggl) {
       .def("saveState", &RBS_FEM::saveState)
       .def("reset", &RBS_FEM::reset)
       .def("connectorPos", [](RBS_FEM &r, Connector c){auto v = r.connectorPos(c); return py::make_tuple(v(0),v(1),v(2));})
-      .def("info_RBS", &RBS_FEM::info_rbs);
+      .def("info_RBS", &RBS_FEM::info_rbs)
+      .def("Energy", &RBS_FEM::Energy);
 
 
     rbdggl.def("simulate",[](RBS_FEM& rbs, double tend, double steps) {simulate(rbs, tend, steps);});

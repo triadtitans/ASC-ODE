@@ -513,6 +513,21 @@ class RBS_FEM{
 
   //  gravitational force
   template <typename T>
+  T gravitation_potential(VectorView<T> q, size_t body_index) const {
+
+    //  std::cout << q << std::endl; 
+
+    auto t = Transformation<T>(q);
+    //std::cout << t.apply(bodies_[body_index].center()) * gravity_ << std::endl;
+    T res = (bodies_[body_index].mass() * t.apply(bodies_[body_index].center()) * gravity_);
+    //std::cout << ((-1)*bodies_[body_index].mass() * t.apply(bodies_[body_index].center()) * gravity_).Value() << std::endl;
+    //std::cout << "res: " << res << std::endl;
+    return res;
+  }
+
+
+  //  gravitational force
+  template <typename T>
   Vector<T> gravitation_force(VectorView<T> q, size_t body_index) const {
     Vector<AutoDiffDiff<dim_per_transform, T>> q_diff(dim_per_transform);
     //std::cout << "q: " << q << std::endl;
@@ -527,11 +542,59 @@ class RBS_FEM{
 
     auto t = Transformation<AutoDiffDiff<dim_per_transform, T>>(q_diff);
     //std::cout << t.apply(bodies_[body_index].center()) * gravity_ << std::endl;
-    Vector<T> res = ((-1)*bodies_[body_index].mass() * t.apply(bodies_[body_index].center()) * gravity_).DValue_vec();
+    Vector<T> res = (bodies_[body_index].mass() * t.apply(bodies_[body_index].center()) * gravity_).DValue_vec();
     //std::cout << ((-1)*bodies_[body_index].mass() * t.apply(bodies_[body_index].center()) * gravity_).Value() << std::endl;
     //std::cout << "res: " << res << std::endl;
     return res;
   }
+
+  //  general force for body
+  template<typename T>
+  T Potential(size_t body_index, T tp) {
+    T res = 0;
+    
+    res += gravitation_potential(Bodies(body_index).q(), body_index);
+    //std::cout << Bodies(body_index).q() << std::endl;
+
+    return res;
+  }
+  //  general force for body
+  template<typename T>
+  T Potential_springs(T tp) {
+    T res = 0;
+    
+    for (Spring spr: Springs()) {
+      
+      res += spr.potential(Bodies(spr.Body_index_a()).q(), Bodies(spr.Body_index_b()).q());    
+    }
+
+    return res;
+  }
+
+  template<typename T>
+  T Kinetic_Energy(size_t body_index, T tp){
+    T res = 0;
+
+    Vector<T> temp(6);
+
+    temp = Bodies(body_index).Mass_matrix_inverse()*Bodies(body_index).phat();
+
+    res = 0.5* temp*Bodies(body_index).phat();
+    //std::cout << Bodies(body_index).phat() << std::endl;
+
+    return res;
+  }
+
+  void Energy() {
+    double E = 0;
+    for(size_t i = 0; i < NumBodies(); i++) {
+      E += Potential(i, 0.0);
+      E += Potential_springs(0.0);
+      E += Kinetic_Energy(i, 0.0);
+    }
+    std::cout << E << std::endl;
+  }
+
 
   //  general force for body
   template<typename T, typename S>
@@ -764,6 +827,7 @@ class RBS_FEM{
 
         temp.Range(12, 24) = hat_map_vector(mp_b);
       }
+      
 
       AutoDiffDiff<dim_per_state, T> rs = G_i*temp;
 

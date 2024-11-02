@@ -3,6 +3,7 @@
 #include <nonlinfunc.h>
 #include <math.h>
 #include <matrix.h>
+#include <type_traits>
 #include <vector.h>
 #include <ode.h>
 #include "../src/autodiffdiff.h"
@@ -11,7 +12,7 @@
 #include <chrono>
 
 
-class RgigBody_FEM;
+class RigidBody_FEM;
 class RBS_FEM;
 
 using namespace ASC_bla;
@@ -229,11 +230,17 @@ class RBS_FEM{
    // references to all beams added to the system
   std::vector<Beam> beams_;
    // initialize gravity x, y, z
-  Vector<double> gravity_ = {0, 0, 9.81};
+  Vector<double> gravity_ = {0, 0, -9.81};
   // orderig: first order, second order, first order, second order, ...
   std::vector<double> lag_params;
 
   Matrix<double> global_mass_inv_{1, 1};
+
+  #ifdef PYBIND11_MODULE
+  py::list energy_logs_;
+  #else
+  std::vector<double> energy_logs_;
+  #endif
 
 
   public:
@@ -272,6 +279,10 @@ class RBS_FEM{
   size_t NumBeams() const {
     return beams_.size();
   }
+  auto energy_logs() const {
+    return energy_logs_;
+  }
+
   MatrixView<double> getGlobalMassInverse() const {
     return global_mass_inv_;
   }
@@ -641,6 +652,54 @@ class RBS_FEM{
     }
   }
 
+  double V(){
+    double pot = 0;
+
+    for (size_t i = 0; i < NumBodies(); i++){
+      Transformation<double> trafo = bodies_[i].getQ();
+      pot += (-1)*(bodies_[i].mass() * trafo.apply(bodies_[i].center()) * gravity_); // bodies_[i].mass() * (gravity_ * trafo.getTranslation());
+      // std::cout << (gravity_ * trafo.getTranslation()) << std::endl;
+    }
+
+    // spring potential
+    for (Spring& spr: springs_) {
+      // //Evaluate distance between connectors, and compare with beam length
+      // Connector c1 = spr.Connector_a();
+      // size_t l = c1.Body_index();
+      // Connector c2 = spr.Connector_b();
+      // size_t k = c2.Body_index();
+
+      // Vec<3, double> pos1 = c1.absPos(bodies_[l].getQ());
+      // Vec<3, double> pos2 = c2.absPos(bodies_[l].getQ());
+      // double norm = Norm(pos1-pos2)-spr.Length();
+      // pot += (1/2.0)*spr.Stiffness()*(norm * norm);
+      pot += spr.potential(Bodies(spr.Body_index_a()).q(), Bodies(spr.Body_index_b()).q());
+    }
+    return pot;
+  }
+
+  double T (){
+    double kin = 0;
+
+    for (size_t i = 0; i < NumBodies(); i++){
+      kin += 0.5*(Bodies(i).Mass_matrix_inverse() * Bodies(i).phat()) * Bodies(i).phat();
+      // std::cout << std::endl << (bodies_[i].Mass_matrix_inverse() * bodies_[i].getPhat()) << std::endl << bodies_[i].getPhat() << std::endl;
+    }
+    return kin;
+  }
+
+  double Energy(){
+    return T() + V();
+  }
+
+  void storeEnergy(){
+    #ifdef PYBIND11_MODULE
+    energy_logs_.append(Energy());
+    #else
+    energy_logs_.push_back(Energy());
+    #endif
+  }
+
   // first beam constraint
   template<typename T>
   T g(VectorView<T>& x, size_t beam_index)  {
@@ -652,6 +711,8 @@ class RBS_FEM{
 
     Vec<3, T> pos1 = bm.Connector_a().absPos(x.Range(dim_per_body * k, dim_per_body * k + dim_per_transform));
     Vec<3, T> pos2 = bm.Connector_b().absPos(x.Range(dim_per_body * l, dim_per_body * l + dim_per_transform));
+
+    // if (1 - std::is_same<T, double>::value){std::cout << pos2 << "\t" << bodies_[l].q() << std::endl << std::endl;} // - bm.Length()*bm.Length()
 
     return (pos1-pos2)*(pos1-pos2) - bm.Length()*bm.Length();
   }
@@ -757,6 +818,8 @@ class RBS_FEM{
                                       x.Range(body_index_b * dim_per_body + 18, body_index_b * dim_per_body + 24);
 
     temp.Range(12, 24) = hat_map_vector(mp_b);
+
+    // std::cout << G_i << std::endl << std::endl << temp << std::endl << std::endl;
 
     return G_i*temp;
   }

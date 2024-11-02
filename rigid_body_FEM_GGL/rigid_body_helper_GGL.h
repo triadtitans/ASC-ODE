@@ -361,6 +361,21 @@ class Spring{
 
     }
   }
+
+  template<typename T>
+  T potential(VectorView<T> q_a, VectorView<T> q_b) {
+    // bool diff_index = True -> differentiate after q_a
+    // else differentiate after q_b
+
+    T res;
+    Vec<3, T> pos1 = Connector_a().absPos(q_a);
+    Vec<3, T> pos2 = Connector_b().absPos(q_b);
+    T norm = Norm(pos1-pos2) - length_;
+    res = (1/2.0)*Stiffness()*(norm * norm);
+
+    //  std::cout << "Sprint_force: " << res_f << std::endl;
+    return res;
+  }
 };
 
 std::ostream& operator<<(std::ostream& oss, Spring& sp){

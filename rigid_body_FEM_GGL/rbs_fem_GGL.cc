@@ -4,8 +4,8 @@
 
 int main()
 {
-  double tend = 0.15/50;
-  double steps = 1;
+  double tend = 0.15/2;
+  double steps = 500;
   Vector<double> q ( 12 );
   q(0)=0; q(1)=1; q(2)=1;
 
@@ -22,15 +22,16 @@ int main()
   MatrixView<double> inertia_v (inertia_matrix);
   RigidBody_FEM rb(q,phat,1,Vec<3>{0,0,0},inertia_v);
   rb.recalcMassMatrix();
-  
+
   RBS_FEM rbs;
-  rbs.Gravity() = {0, 0, 9.81};
+  rbs.Gravity() = {0, -9.81, 0};
 
   Connector c1 = rbs.add(rb);
   Connector c2{ConnectorType::fix, {0, 0, 2}, 0}; //= rbs.addBody(rb2);
-  
+
   Beam bm1(c1, c2);
   rbs.add(bm1);
+
 
   rbs.info_rbs();
 
@@ -48,7 +49,7 @@ int main()
   }
   */
   rbs.Energy();
-  
+
   for( size_t i = 0; i <100; i++) {
     simulate(rbs,tend, steps, [](int i, double t, VectorView<double> q) {
                       std::cout<<std::fixed << "Body1 newton-iteration: " << i << " newton-error: " << std::scientific << t << std::fixed << std::endl

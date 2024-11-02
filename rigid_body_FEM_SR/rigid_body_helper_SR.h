@@ -88,7 +88,7 @@ class Transformation{
   // set Rotation entry-wise
   void setRotation(size_t i, size_t j, T r){
     if(i>2||j>2 || j<0 || i <0) throw std::invalid_argument("Rotation Matrix is 3x3");
-    q_((3+ 3*i) + j)=r; 
+    q_((3+ 3*i) + j)=r;
   }
 
 
@@ -134,7 +134,7 @@ std::ostream& operator<<(std::ostream& oss, const Transformation<double>& t){
     oss<<std::fixed << " Translation: \t" << t.q_(0) << " ," << t.q_(4) << ", "<<", " << t.q_(8) << std::endl
                     << " Rotation: \t" << t.q_(1) << " ," << t.q_(2) << ", "<<", " << t.q_(3) <<  std::endl
                     << " \t\t" << t.q_(5) << " ," << t.q_(6) << ", "<<", " << t.q_(7) <<  std::endl
-                    << "\t\t" << t.q_(9) << " ," << t.q_(10) << ", "<<", " << t.q_(11) << std::endl; 
+                    << "\t\t" << t.q_(9) << " ," << t.q_(10) << ", "<<", " << t.q_(11) << std::endl;
   return oss;
 }
 
@@ -209,7 +209,7 @@ class Connector{
 
   template<typename T>
   Vec<3, T> absPos(Vector<T> a, Matrix<T> B) const{
-    
+
     if(t_ == ConnectorType::fix){
 
       Vec<3, T> pos_t(pos_);
@@ -229,7 +229,7 @@ class Connector{
   template<typename T>
   Vec<3, T> absPos(VectorView<T> q) const
   {
-    
+
     if(t_ == ConnectorType::fix) {
 
       Vec<3, T> pos_t(pos_);
@@ -245,6 +245,17 @@ class Connector{
     }
   }
 };
+
+std::ostream& operator<<(std::ostream& oss, Connector& c){
+  if (c.Type() == ConnectorType::fix) {
+    oss<< std::fixed << "Type: fix" << std::endl;
+  } else  {
+    oss<< std::fixed << "Type: mass" << std::endl;
+  }
+  oss<< std::fixed << "Body_index: " << c.Body_index() << std::endl
+                   << "Position: " << c.Pos() << std::endl;
+  return oss;
+}
 
 
 // Handling position and force for Springs added to the system
@@ -291,7 +302,7 @@ class Spring{
   Vector<T> force(VectorView<T> q_a, VectorView<T> q_b, bool diff_index) {
     // bool diff_index = True -> differentiate after q_a
     // else differentiate after q_b
-    
+
     Vector<AutoDiffDiff<dim_per_transform, T>> res(1);
 
     Vector<AutoDiffDiff<dim_per_transform, T>> x_diff(dim_per_transform);
@@ -312,7 +323,7 @@ class Spring{
       Vector<T> res_f = VectorView(dim_per_transform, res(0).DValue());
       //  std::cout << "Sprint_force: " << res_f << std::endl;
       return res_f;
-      
+
     } else  {
       for (size_t i = 0; i < dim_per_transform; i++)  {
         // first dim_per_transform are for body a
@@ -329,10 +340,19 @@ class Spring{
       Vector<T> res_f = VectorView(dim_per_transform, res(0).DValue());
       //  std::cout << "Sprint_force: " << res_f << std::endl;
       return res_f;
-      
+
     }
   }
 };
+
+std::ostream& operator<<(std::ostream& oss, Spring& sp){
+  oss<<std::fixed << "Index: " << sp.Index() << std::endl
+                  << "Length: " << sp.Length() << std::endl
+                  << "Stiffness: " << sp.Stiffness() << std::endl
+                  << "Connector A: " << std::endl << sp.Connector_a() <<  std::endl
+                  << "Connector B: " << std::endl << sp.Connector_b() <<  std::endl;
+  return oss;
+}
 
 
 // Handling position and forces for Beams added to the system
@@ -371,14 +391,14 @@ class Beam  {
   }
 
 
-  //  takes a vector with oredring (values_body_1, values_body_2, ... , values_body_n, 
+  //  takes a vector with oredring (values_body_1, values_body_2, ... , values_body_n,
   //  lambda_1_body_1, lambda_2_bdy_2, ... , lambda_1_body_n, lambda_2_body_n)
   //  ordering of body_values are assumed to be (trans, rotation (rowmajor), ...)
   template<typename T>
   Vector<T> force(VectorView<T> q_a, VectorView<T> q_b, bool diff_index) {
     // bool diff_index = True -> differentiate after q_a
     // else differentiate after q_b
-    
+
     Vector<AutoDiffDiff<dim_per_transform, T>> res(1);
 
     Vector<AutoDiffDiff<dim_per_transform, T>> x_diff(dim_per_transform);
@@ -399,9 +419,9 @@ class Beam  {
       //std::cout << "pos2: " << pos2 << std::endl;
       //std::cout << "length: " << length_ << std::endl;
       //std::cout << "lambda: " << lambda << std::endl;
-    
+
       return VectorView( dim_per_transform, res(0).DValue());
-      
+
     } else  {
       for (size_t i = 0; i < dim_per_transform; i++)  {
         // first dim_per_transform are for body a
@@ -421,14 +441,22 @@ class Beam  {
       //std::cout << "length: " << length_ << std::endl;
       //std::cout << "lambda: " << lambda << std::endl;
       return VectorView(dim_per_transform, res(0).DValue());
-      
+
     }
-    
+
     // lambda parameters
     // setting Values and Differential Index
     //x_diff(dim_per_transform) = lambda;
     //x_diff(dim_per_transform).DValue(dim_per_transform) = 1;
   }
 };
+
+std::ostream& operator<<(std::ostream& oss, Beam& bm){
+  oss<<std::fixed << "Index: " << bm.Index() << std::endl
+                  << "Length: " << bm.Length() << std::endl
+                  << "Connector A: " << std::endl << bm.Connector_a() <<  std::endl
+                  << "Connector B: " << std::endl << bm.Connector_b() <<  std::endl;
+  return oss;
+}
 
 #endif

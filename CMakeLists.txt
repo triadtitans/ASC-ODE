@@ -26,7 +26,7 @@ else()
     set (CXXFLAGS "-g -O0")
 
     add_subdirectory (src)
-    
+
     add_subdirectory (rigid_body_FEM)
 
     add_subdirectory (rigid_body_FEM_GGL)

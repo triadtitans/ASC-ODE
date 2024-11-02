@@ -125,7 +125,8 @@ PYBIND11_MODULE(rigid_body_FEM_GGL, rbdggl) {
       //.def("setMass", &RigidBody::setMass)
       .def("recalcMassMatrix", &RigidBody_FEM::recalcMassMatrix)
       .def("saveState", &RigidBody_FEM::saveState)
-      .def("reset", &RigidBody_FEM::reset);
+      .def("reset", &RigidBody_FEM::reset)
+      .def("addConnector", [](RigidBody_FEM& body){return Connector{ConnectorType::mass, Vector<double>(3), body.Index()}; });
       // .def("setPhat", &RigidBody_FEM::setPhat_v)
       //.def(py::pickle(
       //    [](RigidBody_FEM& rbdggl){ // __getstate__
@@ -166,7 +167,11 @@ PYBIND11_MODULE(rigid_body_FEM_GGL, rbdggl) {
       .def("saveState", &RBS_FEM::saveState)
       .def("reset", &RBS_FEM::reset)
       .def("connectorPos", [](RBS_FEM &r, Connector c){auto v = r.connectorPos(c); return py::make_tuple(v(0),v(1),v(2));})
-      .def("info_RBS", &RBS_FEM::info_rbs);
+      .def("info_RBS", &RBS_FEM::info_rbs)
+      .def_property_readonly("energy_logs",
+        [](RBS_FEM& rbs){
+          return rbs.energy_logs();
+        });
 
 
     rbdggl.def("simulate",[](RBS_FEM& rbs, double tend, double steps) {simulate(rbs, tend, steps);});

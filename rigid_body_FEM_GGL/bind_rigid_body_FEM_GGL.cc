@@ -24,7 +24,7 @@ PYBIND11_MODULE(rigid_body_FEM_GGL, rbdggl) {
 
     // the main bindings:
     rbdggl.doc() = "rigid body FEM Shake and Rattle simulator";
-       
+
     py::class_<Transformation<>>(rbdggl, "Transformation", py::module_local())
       .def(py::init<>())
       .def(py::init<Vector<double>>())
@@ -57,7 +57,7 @@ PYBIND11_MODULE(rigid_body_FEM_GGL, rbdggl) {
       .def_property_readonly("length", [](Beam& b){return b.Length();})
       .def_property_readonly("connectorA", [](Beam& b){return b.Connector_a();})
       .def_property_readonly("connectorB",[](Beam& b){return b.Connector_b();});
-    
+
     py::class_<Spring>(rbdggl,"Spring", py::module_local())
       .def(py::init<>([](Connector a, Connector b, double length, double stiffness){return Spring{length,stiffness,a,b};})) // stiffness should be positive! (-k)
       .def_property_readonly("length", [](Spring& b){return b.Length();})
@@ -136,7 +136,7 @@ PYBIND11_MODULE(rigid_body_FEM_GGL, rbdggl) {
       //      rbdggl.load_pickle(data);
       //      return rbdggl;
       //    }));
-      
+
     //rbdggl.def("mass_matrix_from_inertia", &mass_matrix_from_inertia, "generates the a mass matrix from given inertia, center and mass",
             //py::arg("inertia_matrix"), py::arg("center_of_mass"), py::arg("mass"));
 
@@ -166,8 +166,7 @@ PYBIND11_MODULE(rigid_body_FEM_GGL, rbdggl) {
       .def("saveState", &RBS_FEM::saveState)
       .def("reset", &RBS_FEM::reset)
       .def("connectorPos", [](RBS_FEM &r, Connector c){auto v = r.connectorPos(c); return py::make_tuple(v(0),v(1),v(2));})
-      .def("info_RBS", &RBS_FEM::info_rbs)
-      .def("Energy", &RBS_FEM::Energy);
+      .def("info_RBS", &RBS_FEM::info_rbs);
 
 
     rbdggl.def("simulate",[](RBS_FEM& rbs, double tend, double steps) {simulate(rbs, tend, steps);});

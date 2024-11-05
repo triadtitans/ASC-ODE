@@ -210,7 +210,7 @@ class EQRigidBody : public NonlinearFunction
       MatrixView<double> view = df.Cols(curr_bd_index* dim_per_body, dim_per_body);
 
       for (size_t i = 0; i < dim_per_body; i++) {
-        view.Row(i) = f(i).DValue_vec();
+        view.Row(i) += f(i).DValue_vec();
       }
 
     } while (count < rbs_.Bodies(Index()).Connected_Bodies().size());
@@ -294,7 +294,7 @@ class EQRigidBody : public NonlinearFunction
       MatrixView<double> view = df.Cols(rbs_.NumBodies() * dim_per_body + 2 * curr_beam_index, 2);
 
       for (size_t i = 0; i < dim_per_body; i++) {
-        view.Row(i) = fb(i).DValue_vec();
+        view.Row(i) += fb(i).DValue_vec();
       }
     }
   }
@@ -378,6 +378,7 @@ class EQRBS : public NonlinearFunction  {
   }
   void EvaluateDeriv (VectorView<double> x, MatrixView<double> df) const override
   { 
+    df = 0;
     
     //  extract the all rows with body equations
     MatrixView<double> current_block = df.Rows(0, dim_per_body*rbs_.NumBodies());
@@ -413,25 +414,26 @@ class EQRBS : public NonlinearFunction  {
       }
 
       //  evaluate both equations
-      Vector<double> res_g = rbs_.g(x_diff, curr_bm.Index()).DValue_vec();
+      Vector<double> res_g = rbs_.G_test(x.Range(curr_bm.Body_index_a()*dim_per_body, curr_bm.Body_index_a()*dim_per_body + dim_per_transform),
+                                    x.Range(curr_bm.Body_index_b()*dim_per_body, curr_bm.Body_index_b()*dim_per_body + dim_per_transform), curr_bm);
+      //Vector<double> res_g = rbs_.g(x_diff, curr_bm.Index()).DValue_vec();
       Vector<double> res_vel_con = rbs_.velocity_constraint(x_diff, curr_bm.Index()).DValue_vec();
 
       //  fill result into jacobi matrix
       for (size_t i= 0; i < dim_per_transform; i++) {
-        df(rbs_.NumBeams() * dim_per_body + 2 * j, curr_bm.Body_index_a()*dim_per_body + i) = res_g(i);
-        df(rbs_.NumBeams() * dim_per_body + 2 * j, curr_bm.Body_index_b()*dim_per_body + i) = res_g(dim_per_state + i);
+        df(rbs_.NumBodies() * dim_per_body + 2 * j, curr_bm.Body_index_a()*dim_per_body + i) += res_g(i);
+        df(rbs_.NumBodies() * dim_per_body + 2 * j, curr_bm.Body_index_b()*dim_per_body + i) += res_g(dim_per_transform + i);
 
-        df(rbs_.NumBeams() * dim_per_body + 2 * j + 1, curr_bm.Body_index_a()*dim_per_body + i) = res_vel_con(i);
-        df(rbs_.NumBeams() * dim_per_body + 2 * j + 1, curr_bm.Body_index_b()*dim_per_body + i) = res_vel_con(dim_per_state + i);
+        df(rbs_.NumBodies() * dim_per_body + 2 * j + 1, curr_bm.Body_index_a()*dim_per_body + i) = res_vel_con(i);
+        df(rbs_.NumBodies() * dim_per_body + 2 * j + 1, curr_bm.Body_index_b()*dim_per_body + i) = res_vel_con(dim_per_state + i);
       }
 
       for (size_t i = 0; i < dim_per_state - dim_per_transform; i++)  {
-        df(rbs_.NumBeams() * dim_per_body + 2 * j, curr_bm.Body_index_a()*dim_per_body + 18 + i) = res_g(dim_per_transform + i);
-        df(rbs_.NumBeams() * dim_per_body + 2 * j, curr_bm.Body_index_b()*dim_per_body + 18 + i) = res_g(dim_per_state + dim_per_transform + i);
 
-        df(rbs_.NumBeams() * dim_per_body + 2 * j + 1, curr_bm.Body_index_a()*dim_per_body + 18 + i) = res_vel_con(dim_per_transform + i);
-        df(rbs_.NumBeams() * dim_per_body + 2 * j + 1, curr_bm.Body_index_b()*dim_per_body + 18 + i) = res_vel_con(dim_per_state + dim_per_transform + i);
+        df(rbs_.NumBodies() * dim_per_body + 2 * j + 1, curr_bm.Body_index_a()*dim_per_body + 18 + i) = res_vel_con(dim_per_transform + i);
+        df(rbs_.NumBodies() * dim_per_body + 2 * j + 1, curr_bm.Body_index_b()*dim_per_body + 18 + i) = res_vel_con(dim_per_state + dim_per_transform + i);
       }
+      //std::cout << "res_g: " << res_g << std::endl;
     }
   }
 };
@@ -460,6 +462,8 @@ void simulate(RBS_FEM& rbs, double tend, double steps, std::function<void(int,do
 
     //store data into different bodies
     rbs.setState(state);
+
+    rbs.storeEnergy();
   }
 
 } 

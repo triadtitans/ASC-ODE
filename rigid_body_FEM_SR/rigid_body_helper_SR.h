@@ -131,9 +131,9 @@ class Transformation{
 };
 
 std::ostream& operator<<(std::ostream& oss, const Transformation<double>& t){
-    oss<<std::fixed << " Translation: \t" << t.q_(0) << " ," << t.q_(4) << ", "<<", " << t.q_(8) << std::endl
-                    << " Rotation: \t" << t.q_(1) << " ," << t.q_(2) << ", "<<", " << t.q_(3) <<  std::endl
-                    << " \t\t" << t.q_(5) << " ," << t.q_(6) << ", "<<", " << t.q_(7) <<  std::endl
+    oss<<std::fixed << " Translation: \t" << t.q_(0) << " ," << t.q_(1) << ", "<<", " << t.q_(2) << std::endl
+                    << " Rotation: \t" << t.q_(3) << " ," << t.q_(4) << ", "<<", " << t.q_(5) <<  std::endl
+                    << " \t\t" << t.q_(6) << " ," << t.q_(7) << ", "<<", " << t.q_(8) <<  std::endl
                     << "\t\t" << t.q_(9) << " ," << t.q_(10) << ", "<<", " << t.q_(11) << std::endl;
   return oss;
 }
@@ -298,6 +298,24 @@ class Spring{
     return b_;
   }
 
+  // template<typename T>
+  // T potential(VectorView<T> q_a, VectorView<T> q_b) {
+  //   // bool diff_index = True -> differentiate after q_a
+  //   // else differentiate after q_b
+
+  //   T res;
+
+
+  //   Vec<3, T> pos1 = Connector_a().absPos(q_a);
+  //   Vec<3, T> pos2 = Connector_b().absPos(q_b);
+
+  //   T norm = Norm(pos1-pos2) - length_;
+  //   res = (1/2.0)*Stiffness()*(norm * norm);
+
+  //   //  std::cout << "Sprint_force: " << res_f << std::endl;
+  //   return res;
+  // }
+
   template<typename T>
   Vector<T> force(VectorView<T> q_a, VectorView<T> q_b, bool diff_index) {
     // bool diff_index = True -> differentiate after q_a
@@ -320,7 +338,7 @@ class Spring{
 
       AutoDiffDiff<dim_per_transform, T> norm = Norm(pos1-pos2) - length_;
       res(0) = (1/2.0)*Stiffness()*(norm * norm);
-      Vector<T> res_f = VectorView(dim_per_transform, res(0).DValue());
+      Vector<T> res_f = res(0).DValue_vec();
       //  std::cout << "Sprint_force: " << res_f << std::endl;
       return res_f;
 
@@ -337,11 +355,26 @@ class Spring{
 
       AutoDiffDiff<dim_per_transform, T> norm = Norm(pos1-pos2) - length_;
       res(0) = (1/2.0)*Stiffness()*(norm * norm);
-      Vector<T> res_f = VectorView(dim_per_transform, res(0).DValue());
+      Vector<T> res_f = res(0).DValue_vec();
       //  std::cout << "Sprint_force: " << res_f << std::endl;
       return res_f;
 
     }
+  }
+
+  template<typename T>
+  T potential(VectorView<T> q_a, VectorView<T> q_b) {
+    // bool diff_index = True -> differentiate after q_a
+    // else differentiate after q_b
+
+    T res;
+    Vec<3, T> pos1 = Connector_a().absPos(q_a);
+    Vec<3, T> pos2 = Connector_b().absPos(q_b);
+    T norm = Norm(pos1-pos2) - length_;
+    res = (1/2.0)*Stiffness()*(norm * norm);
+
+    //  std::cout << "Sprint_force: " << res_f << std::endl;
+    return res;
   }
 };
 
@@ -395,7 +428,7 @@ class Beam  {
   //  lambda_1_body_1, lambda_2_bdy_2, ... , lambda_1_body_n, lambda_2_body_n)
   //  ordering of body_values are assumed to be (trans, rotation (rowmajor), ...)
   template<typename T>
-  Vector<T> force(VectorView<T> q_a, VectorView<T> q_b, bool diff_index) {
+  Vector<T> force(VectorView<T> q_a, VectorView<T> q_b, size_t body_index) {
     // bool diff_index = True -> differentiate after q_a
     // else differentiate after q_b
 
@@ -403,7 +436,7 @@ class Beam  {
 
     Vector<AutoDiffDiff<dim_per_transform, T>> x_diff(dim_per_transform);
 
-    if (diff_index) {
+    if ((body_index == Body_index_a()) && (Connector_a().Type() != ConnectorType::fix)) {
       for (size_t i = 0; i < dim_per_transform; i++)  {
         // first dim_per_transform are for body a
         // setting Values and Differential Index
@@ -414,13 +447,13 @@ class Beam  {
       Vec<3, AutoDiffDiff<dim_per_transform, T>> pos1 = Connector_a().absPos(x_diff.Range(0, dim_per_transform));
       Vec<3, T> pos2 = Connector_b().absPos(q_b);
 
-      res(0) = (pos1-pos2)*(pos1-pos2) - length_*length_;
+      res(0) = (pos1 - pos2)*(pos1 - pos2) - Length()*Length();
       //std::cout << "pos1: " << pos1 << std::endl;
       //std::cout << "pos2: " << pos2 << std::endl;
       //std::cout << "length: " << length_ << std::endl;
       //std::cout << "lambda: " << lambda << std::endl;
 
-      return VectorView( dim_per_transform, res(0).DValue());
+      return res(0).DValue_vec();
 
     } else  {
       for (size_t i = 0; i < dim_per_transform; i++)  {
@@ -434,13 +467,13 @@ class Beam  {
       Vec<3, AutoDiffDiff<dim_per_transform, T>> pos2 = Connector_b().absPos(x_diff.Range(0, dim_per_transform));
       //AutoDiffDiff<dim_per_transform, T> res = ((pos1-pos2)*(pos1-pos2) - beam.length*beam.length)*((pos1-pos2)*(pos1-pos2) - beam.length*beam.length);
       //AutoDiffDiff<dim_per_transform, T> norm = Norm(pos1-pos2) - Length();
-      //res(0) = norm*norm;
-      res(0) = (pos1-pos2)*(pos1-pos2) - length_*length_;
+      res(0) = (pos1 - pos2)*(pos1 - pos2) - Length()*Length();
+      //res(0) = lambda*((pos1-pos2)*(pos1-pos2) - length_*length_)*((pos1-pos2)*(pos1-pos2) - length_*length_);
       //std::cout << "pos1: " << pos1 << std::endl;
       //std::cout << "pos2: " << pos2 << std::endl;
       //std::cout << "length: " << length_ << std::endl;
       //std::cout << "lambda: " << lambda << std::endl;
-      return VectorView(dim_per_transform, res(0).DValue());
+      return res(0).DValue_vec();
 
     }
 

@@ -24,7 +24,7 @@ PYBIND11_MODULE(rigid_body_FEM_SR, rbdsr) {
 
     // the main bindings:
     rbdsr.doc() = "rigid body FEM Shake and Rattle simulator";
-       
+
     py::class_<Transformation<>>(rbdsr, "Transformation", py::module_local())
       .def(py::init<>())
       .def(py::init<Vector<double>>())
@@ -57,7 +57,7 @@ PYBIND11_MODULE(rigid_body_FEM_SR, rbdsr) {
       .def_property_readonly("length", [](Beam& b){return b.Length();})
       .def_property_readonly("connectorA", [](Beam& b){return b.Connector_a();})
       .def_property_readonly("connectorB",[](Beam& b){return b.Connector_b();});
-    
+
     py::class_<Spring>(rbdsr,"Spring", py::module_local())
       .def(py::init<>([](Connector a, Connector b, double length, double stiffness){return Spring{length,stiffness,a,b};})) // stiffness should be positive! (-k)
       .def_property_readonly("length", [](Spring& b){return b.Length();})
@@ -125,7 +125,8 @@ PYBIND11_MODULE(rigid_body_FEM_SR, rbdsr) {
       //.def("setMass", &RigidBody::setMass)
       .def("recalcMassMatrix", &RigidBody_FEM::recalcMassMatrix)
       .def("saveState", &RigidBody_FEM::saveState)
-      .def("reset", &RigidBody_FEM::reset);
+      .def("reset", &RigidBody_FEM::reset)
+      .def("addConnector", [](RigidBody_FEM& body){return Connector{ConnectorType::mass, Vector<double>(3), body.Index()}; });
       // .def("setPhat", &RigidBody_FEM::setPhat_v)
       //.def(py::pickle(
       //    [](RigidBody_FEM& rbdsr){ // __getstate__
@@ -136,7 +137,7 @@ PYBIND11_MODULE(rigid_body_FEM_SR, rbdsr) {
       //      rbdsr.load_pickle(data);
       //      return rbdsr;
       //    }));
-      
+
     //rbdsr.def("mass_matrix_from_inertia", &mass_matrix_from_inertia, "generates the a mass matrix from given inertia, center and mass",
             //py::arg("inertia_matrix"), py::arg("center_of_mass"), py::arg("mass"));
 
@@ -165,7 +166,12 @@ PYBIND11_MODULE(rigid_body_FEM_SR, rbdsr) {
       .def("springs", py::overload_cast<size_t>(&RBS_FEM::Springs))
       .def("saveState", &RBS_FEM::saveState)
       .def("reset", &RBS_FEM::reset)
-      .def("connectorPos", [](RBS_FEM &r, Connector c){auto v = r.connectorPos(c); return py::make_tuple(v(0),v(1),v(2));});
+      .def("connectorPos", [](RBS_FEM &r, Connector c){auto v = r.connectorPos(c); return py::make_tuple(v(0),v(1),v(2));})
+      .def("info_RBS", &RBS_FEM::info_rbs)
+      .def_property_readonly("energy_logs",
+        [](RBS_FEM& rbs){
+          return rbs.energy_logs();
+        });
 
 
     rbdsr.def("simulate",[](RBS_FEM& rbs, double tend, double steps) {simulate(rbs, tend, steps);});

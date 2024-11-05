@@ -553,7 +553,7 @@ class RBS_FEM{
 
     auto t = Transformation<AutoDiffDiff<dim_per_transform, T>>(q_diff);
     //std::cout << t.apply(bodies_[body_index].center()) * gravity_ << std::endl;
-    Vector<T> res = ((-1)*bodies_[body_index].mass() * t.apply(bodies_[body_index].center()) * gravity_).DValue_vec();
+    Vector<T> res = (bodies_[body_index].mass() * t.apply(bodies_[body_index].center()) * gravity_).DValue_vec();
     //std::cout << ((-1)*bodies_[body_index].mass() * t.apply(bodies_[body_index].center()) * gravity_).Value() << std::endl;
     //std::cout << "res: " << res << std::endl;
     return res;
@@ -596,15 +596,16 @@ class RBS_FEM{
   //   return res;
   // }
 
-  // void Energy() {
-  //   double E = 0;
-  //   for(size_t i = 0; i < NumBodies(); i++) {
-  //     E += Potential(i, 0.0);
-  //     E += Potential_springs(0.0);
-  //     E += Kinetic_Energy(i, 0.0);
-  //   }
-  //   std::cout << E << std::endl;
-  // }
+  //double Energy() {
+  //  double E = 0;
+  //  for(size_t i = 0; i < NumBodies(); i++) {
+  //    E += Bodies(i).phat()*(Bodies(i).Mass_matrix_inverse() *Bodies(i).phat());
+  //    E += Potential(i, 0.0);
+  //    E += Potential_springs(0.0);
+  //    E -= Kinetic_Energy(i, 0.0);
+  //  }
+  //  return E;
+  //}
 
 
   //  general force for body
@@ -657,7 +658,7 @@ class RBS_FEM{
 
     for (size_t i = 0; i < NumBodies(); i++){
       Transformation<double> trafo = bodies_[i].getQ();
-      pot += (-1)*(bodies_[i].mass() * trafo.apply(bodies_[i].center()) * gravity_); // bodies_[i].mass() * (gravity_ * trafo.getTranslation());
+      pot += (bodies_[i].mass() * trafo.apply(bodies_[i].center()) * gravity_); // bodies_[i].mass() * (gravity_ * trafo.getTranslation());
       // std::cout << (gravity_ * trafo.getTranslation()) << std::endl;
     }
 
@@ -681,15 +682,20 @@ class RBS_FEM{
   double T (){
     double kin = 0;
 
-    for (size_t i = 0; i < NumBodies(); i++){
+    for (size_t i = 0; i < NumBodies(); i++)  {
       kin += 0.5*(Bodies(i).Mass_matrix_inverse() * Bodies(i).phat()) * Bodies(i).phat();
       // std::cout << std::endl << (bodies_[i].Mass_matrix_inverse() * bodies_[i].getPhat()) << std::endl << bodies_[i].getPhat() << std::endl;
     }
     return kin;
   }
 
-  double Energy(){
-    return T() + V();
+  double Energy() {
+    //  Total Energy function for this hamitlonian systems described by the Liven's principle is E(p, v, q) = p*v - L(q,p) = p*M^(-1)*p - T(q, p) + U(q, p)
+    double temp = 0;
+    for (size_t i = 0; i < NumBodies(); i++)  {
+      temp += (0.5)*Bodies(i).phat()*(Bodies(i).Mass_matrix_inverse() *Bodies(i).phat());
+    }
+    return  temp + V();
   }
 
   void storeEnergy(){
